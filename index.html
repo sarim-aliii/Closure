@@ -1,0 +1,66 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Closure</title>
+  <script src="https://cdn.tailwindcss.com"></script>
+  <style>
+    /* Custom scrollbar for webkit browsers */
+    ::-webkit-scrollbar {
+      width: 8px;
+    }
+    ::-webkit-scrollbar-track {
+      background: #f1f1f1;
+      /* Dark mode track */
+      /* Consider adding dark mode specific scrollbar styles if needed */
+    }
+    .dark ::-webkit-scrollbar-track {
+        background: #2d3748; /* A dark gray, adjust as needed */
+    }
+    ::-webkit-scrollbar-thumb {
+      background: #888;
+      border-radius: 4px;
+    }
+    .dark ::-webkit-scrollbar-thumb {
+        background: #555;
+    }
+    ::-webkit-scrollbar-thumb:hover {
+      background: #555;
+    }
+    .dark ::-webkit-scrollbar-thumb:hover {
+        background: #444;
+    }
+    /* Basic body styling for mobile look */
+    body {
+      font-family: sans-serif;
+      overscroll-behavior-y: contain; /* Prevents pull-to-refresh on mobile browsers if content is scrollable */
+      @apply bg-white dark:bg-gray-900 text-gray-900 dark:text-gray-100;
+    }
+  </style>
+<script type="importmap">
+{
+  "imports": {
+    "react/": "https://esm.sh/react@^19.1.0/",
+    "react": "https://esm.sh/react@^19.1.0",
+    "react-dom/": "https://esm.sh/react-dom@^19.1.0/",
+    "react-router-dom": "https://esm.sh/react-router-dom@^7.6.2"
+  }
+}
+</script>
+<script>
+  // Tailwind dark mode strategy (class is default for CDN, but explicit for clarity)
+  // This script ensures the 'dark' class is applied to <html> based on localStorage
+  // It runs before React hydrates to prevent FOUC (Flash Of Unstyled Content)
+  if (localStorage.getItem('theme') === 'dark' || (!('theme' in localStorage) && window.matchMedia('(prefers-color-scheme: dark)').matches)) {
+    document.documentElement.classList.add('dark');
+  } else {
+    document.documentElement.classList.remove('dark');
+  }
+</script>
+</head>
+<body>
+  <div id="root" class="h-screen w-screen overflow-hidden"></div>
+  <script type="module" src="/index.tsx"></script>
+</body>
+</html>
