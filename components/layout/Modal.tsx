@@ -1,9 +1,21 @@
-import React from 'react';
-import { ModalProps } from '../../types'
+import React, { useEffect, useState } from 'react';
+import { Modal } from '../../types';
 
+const Modal: React.FC<Modal> = ({ isOpen, onClose, title, children, size = 'md' }) => {
+  const [isVisible, setIsVisible] = useState(false);
+  const [shouldRender, setShouldRender] = useState(false);
 
-const Modal: React.FC<ModalProps> = ({ isOpen, onClose, title, children, size = 'md' }) => {
-  if (!isOpen) return null;
+  useEffect(() => {
+    if (isOpen) {
+      setShouldRender(true);
+      setTimeout(() => setIsVisible(true), 10);
+    } else {
+      setIsVisible(false);
+      setTimeout(() => setShouldRender(false), 300);
+    }
+  }, [isOpen]);
+
+  if (!shouldRender) return null;
 
   const sizeClasses = {
     sm: 'max-w-sm',
@@ -13,24 +25,40 @@ const Modal: React.FC<ModalProps> = ({ isOpen, onClose, title, children, size = 
   };
 
   return (
-    <div className="fixed inset-0 bg-black bg-opacity-60 flex items-center justify-center z-50 p-4 transition-opacity duration-300 ease-in-out" onClick={onClose}>
+    <div 
+        className={`fixed inset-0 z-50 flex items-center justify-center p-4 transition-opacity duration-300 ease-in-out ${
+            isVisible ? 'opacity-100' : 'opacity-0'
+        }`}
+    >
+      {/* Backdrop */}
       <div 
-        className={`bg-white rounded-lg shadow-xl p-6 m-4 relative transform transition-all duration-300 ease-in-out ${sizeClasses[size]} w-full`}
+        className="absolute inset-0 bg-black/60 backdrop-blur-sm transition-opacity" 
+        onClick={onClose} 
+      />
+
+      {/* Modal Content */}
+      <div 
+        className={`relative bg-white dark:bg-gray-800 rounded-xl shadow-2xl w-full transform transition-all duration-300 ease-out ${sizeClasses[size]} ${
+            isVisible ? 'scale-100 translate-y-0' : 'scale-95 translate-y-4'
+        } flex flex-col max-h-[85vh]`}
         onClick={(e) => e.stopPropagation()}
       >
-        <div className="flex justify-between items-center mb-4">
-          <h3 className="text-xl font-semibold text-gray-800">{title}</h3>
+        {/* Header */}
+        <div className="flex justify-between items-center p-5 border-b border-gray-100 dark:border-gray-700">
+          <h3 className="text-xl font-bold text-gray-800 dark:text-gray-100">{title}</h3>
           <button 
             onClick={onClose} 
-            className="text-gray-500 hover:text-gray-700 transition-colors p-1 rounded-full hover:bg-gray-100"
+            className="text-gray-400 hover:text-gray-600 dark:hover:text-gray-200 transition-colors p-1.5 rounded-full hover:bg-gray-100 dark:hover:bg-gray-700/50"
             aria-label="Close modal"
           >
-            <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" strokeWidth={1.5} stroke="currentColor" className="w-6 h-6">
+            <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" strokeWidth={2} stroke="currentColor" className="w-5 h-5">
               <path strokeLinecap="round" strokeLinejoin="round" d="M6 18L18 6M6 6l12 12" />
             </svg>
           </button>
         </div>
-        <div className="max-h-[70vh] overflow-y-auto">
+
+        {/* Scrollable Body */}
+        <div className="p-5 overflow-y-auto custom-scrollbar">
           {children}
         </div>
       </div>

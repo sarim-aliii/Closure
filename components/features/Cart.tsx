@@ -1,17 +1,17 @@
 import React from 'react';
-import { AppView, CartScreenProps} from '../../types'; 
-import ArrowLeftIcon from '../icons/ArrowLeft'; 
+import { AppView, Cart} from '../../types'; 
+import ArrowLeft from '../icons/ArrowLeft'; 
 
 
 
-const CartScreen: React.FC<CartScreenProps> = ({ cartItems, onRemoveItem, onUpdateQuantity, onNavigate, onBack }) => {
+const Cart: React.FC<Cart> = ({ cartItems, onRemoveItem, onUpdateQuantity, onNavigate, onBack }) => {
   const totalAmount = cartItems.reduce((sum, item) => sum + item.price * item.quantity, 0);
 
   return (
     <div className="h-screen w-screen flex flex-col bg-gray-100 dark:bg-gray-900">
        <div className="bg-indigo-700 dark:bg-indigo-800 text-white p-4 flex items-center shadow-md sticky top-0 z-20">
         <button onClick={onBack} className="mr-3 p-1" aria-label="Back to previous page">
-          <ArrowLeftIcon className="w-6 h-6" />
+          <ArrowLeft className="w-6 h-6" />
         </button>
         <h1 className="text-xl font-semibold">Shopping Cart</h1>
       </div>
@@ -88,4 +88,4 @@ const CartScreen: React.FC<CartScreenProps> = ({ cartItems, onRemoveItem, onUpda
   );
 };
 
-export default CartScreen;
+export default Cart;

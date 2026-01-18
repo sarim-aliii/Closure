@@ -1,0 +1,5 @@
+import React from 'react';
+
+const Pip: React.FC<{ className?: string }> = ({ className = "w-5 h-5" }) => <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" strokeWidth={1.5} stroke="currentColor" className={className}><path strokeLinecap="round" strokeLinejoin="round" d="M15.042 21.374a15.126 15.126 0 01-3.084.038c-2.047.121-3.482-.998-3.482-2.5V5.062c0-1.502 1.435-2.621 3.482-2.5V16.5a.75.75 0 001.5 0V2.562c0-1.502-1.435-2.621-3.482-2.5A15.126 15.126 0 006.958.1C4.614.266 3 2.05 3 4.5v15c0 2.45 1.614 4.233 3.958 4.398a15.256 15.256 0 003.084.038c2.047-.121 3.482.998 3.482 2.5v-1.438c0-1.502-1.435-2.621-3.482-2.5zM19.5 16.5a.75.75 0 00-1.5 0v2.938a.75.75 0 001.5 0V16.5zm0-4.5a.75.75 0 00-1.5 0v2.938a.75.75 0 001.5 0V12zm0-4.5a.75.75 0 00-1.5 0v2.938a.75.75 0 001.5 0V7.5z" /></svg>;
+
+export default Pip;

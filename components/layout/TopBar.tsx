@@ -1,14 +1,13 @@
 import React, { useState } from 'react';
-import MenuIcon from '../icons/Menu';
-import BellIcon from '../icons/Bell';
-import ArrowLeftIcon from '../icons/ArrowLeft';
-import CartIcon from '../icons/Cart';
-import { Notification, TopBarProps } from '../../types';
+import Menu from '../icons/Menu';
+import Bell from '../icons/Bell';
+import ArrowLeft from '../icons/ArrowLeft';
+import Cart from '../icons/Cart';
+import { Notification, TopBar } from '../../types';
 import NotificationDropdown from '../features/NotificationDropdown';
 
 
-
-const TopBar: React.FC<TopBarProps> = ({
+const TopBar: React.FC<TopBar> = ({
   title,
   userName,
   showMenuButton = true,
@@ -26,8 +25,8 @@ const TopBar: React.FC<TopBarProps> = ({
   const unreadCount = notifications.filter((n: Notification) => !n.read).length;
 
   const handleNotificationItemClick = (notification: Notification) => {
-    const idValue: string = notification.id;
-    onNotificationClick(idValue);
+    onNotificationClick(notification.id);
+    setShowNotificationsDropdown(false);
   };
   
   const handleMarkAllRead = () => {
@@ -35,55 +34,77 @@ const TopBar: React.FC<TopBarProps> = ({
   }
 
   return (
-    <div className="bg-indigo-700 dark:bg-indigo-800 text-white p-4 flex items-center justify-between shadow-md sticky top-0 z-30">
+    <div className="bg-indigo-700 dark:bg-indigo-800 text-white p-4 flex items-center justify-between shadow-md sticky top-0 z-30 transition-colors duration-200">
+      
+      {/* LEFT SECTION: Navigation & Title */}
       <div className="flex items-center">
-        {showBackButton && (
-          <button onClick={onBackClick} className="mr-2 p-1" aria-label="Go back">
-            <ArrowLeftIcon className="w-6 h-6 text-white" />
+        {showBackButton ? (
+          <button onClick={onBackClick} className="mr-3 p-1 rounded-full hover:bg-indigo-600 dark:hover:bg-indigo-700 transition-colors" aria-label="Go back">
+            <ArrowLeft className="w-6 h-6 text-white" />
           </button>
+        ) : (
+          showMenuButton && (
+            <button onClick={onMenuClick} className="mr-3 p-1 rounded-full hover:bg-indigo-600 dark:hover:bg-indigo-700 transition-colors" aria-label="Open menu">
+              <Menu className="w-6 h-6 text-white" />
+            </button>
+          )
         )}
-        {showMenuButton && !showBackButton && (
-          <button onClick={onMenuClick} className="mr-2 p-1" aria-label="Open menu">
-            <MenuIcon className="w-6 h-6 text-white" />
-          </button>
-        )}
+        
         <div>
-            <h1 className="text-xl font-semibold leading-tight text-white">{title}</h1>
+            <h1 className="text-xl font-bold leading-tight tracking-tight text-white">{title}</h1>
             {userName && title === "Closure" && ( 
-                 <p className="text-xs opacity-80 leading-tight text-indigo-200 dark:text-indigo-300">Welcome, {userName}!</p>
+                 <p className="text-xs opacity-90 leading-tight text-indigo-100 dark:text-indigo-200 font-medium">Hi, {userName.split(' ')[0]}!</p>
             )}
         </div>
       </div>
-      <div className="flex items-center space-x-3">
-        {onCartClick && title === "Closure" && (
-            <button onClick={onCartClick} className="relative p-1" aria-label={`Cart with ${cartItemCount} items`}>
-                <CartIcon className="w-6 h-6 text-white" />
+
+      {/* RIGHT SECTION: Actions */}
+      <div className="flex items-center space-x-2">
+        
+        {/* Cart Icon (Only if handler is provided) */}
+        {onCartClick && (
+            <button 
+                onClick={onCartClick} 
+                className="relative p-2 rounded-full hover:bg-indigo-600 dark:hover:bg-indigo-700 transition-colors" 
+                aria-label={`Cart with ${cartItemCount} items`}
+            >
+                <Cart className="w-6 h-6 text-white" />
                 {cartItemCount > 0 && (
-                <span className="absolute -top-1 -right-1.5 block h-4 w-4 text-xs flex items-center justify-center rounded-full bg-pink-500 text-white ring-2 ring-indigo-700 dark:ring-indigo-800">
+                <span className="absolute top-0 right-0 block h-4 w-4 text-[10px] font-bold flex items-center justify-center rounded-full bg-pink-500 text-white ring-2 ring-indigo-700 dark:ring-indigo-800">
                     {cartItemCount > 9 ? '9+' : cartItemCount}
                 </span>
                 )}
             </button>
         )}
+
+        {/* Notifications Icon */}
         <div className="relative">
             <button 
                 onClick={() => setShowNotificationsDropdown(!showNotificationsDropdown)} 
-                className="relative p-1" 
+                className="relative p-2 rounded-full hover:bg-indigo-600 dark:hover:bg-indigo-700 transition-colors" 
                 aria-label={`Notifications ${unreadCount > 0 ? `(${unreadCount} unread)` : ''}`}
                 aria-expanded={showNotificationsDropdown}
             >
-                <BellIcon className="w-6 h-6 text-white" />
+                <Bell className="w-6 h-6 text-white" />
                 {unreadCount > 0 && (
-                <span className="absolute -top-1 -right-1 block h-2.5 w-2.5 rounded-full bg-red-500 ring-1 ring-indigo-700 dark:ring-indigo-800"></span>
+                <span className="absolute top-1 right-1.5 block h-2.5 w-2.5 rounded-full bg-red-500 ring-2 ring-indigo-700 dark:ring-indigo-800 animate-pulse"></span>
                 )}
             </button>
+            
+            {/* Dropdown Menu */}
             {showNotificationsDropdown && (
-                <NotificationDropdown
-                    notifications={notifications}
-                    onClose={() => setShowNotificationsDropdown(false)}
-                    onNotificationClick={handleNotificationItemClick}
-                    onMarkAllRead={handleMarkAllRead}
-                />
+                <>
+                    {/* Backdrop to close when clicking outside */}
+                    <div className="fixed inset-0 z-40" onClick={() => setShowNotificationsDropdown(false)}></div>
+                    <div className="absolute right-0 mt-2 z-50">
+                        <NotificationDropdown
+                            notifications={notifications}
+                            onClose={() => setShowNotificationsDropdown(false)}
+                            onNotificationClick={handleNotificationItemClick}
+                            onMarkAllRead={handleMarkAllRead}
+                        />
+                    </div>
+                </>
             )}
         </div>
       </div>

@@ -1,17 +1,17 @@
 import React from 'react';
-import { MainAppTab, BottomNavProps } from '../../types';
-import HomeIcon from '../icons/Home';
-import StoreIcon from '../icons/Store'; 
-import UsersIcon from '../icons/Users'; 
-import ProfileIcon from '../icons/Profile';
+import { MainAppTab, BottomNav } from '../../types';
+import Home from '../icons/Home';
+import Store from '../icons/Store'; 
+import Users from '../icons/Users'; 
+import Profile from '../icons/Profile';
 
 
-const BottomNav: React.FC<BottomNavProps> = ({ activeTab, onTabChange }) => {
+const BottomNav: React.FC<BottomNav> = ({ activeTab, onTabChange }) => {
   const navItems = [
-    { id: MainAppTab.HOME, label: 'Home', icon: HomeIcon },
-    { id: MainAppTab.STORE, label: 'Store', icon: StoreIcon },
-    { id: MainAppTab.COMMUNITY, label: 'Community', icon: UsersIcon },
-    { id: MainAppTab.PROFILE, label: 'Profile', icon: ProfileIcon },
+    { id: MainAppTab.HOME, label: 'Home', icon: Home },
+    { id: MainAppTab.STORE, label: 'Store', icon: Store },
+    { id: MainAppTab.COMMUNITY, label: 'Community', icon: Users },
+    { id: MainAppTab.PROFILE, label: 'Profile', icon: Profile },
   ];
 
   return (

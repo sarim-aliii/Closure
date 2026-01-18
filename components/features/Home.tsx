@@ -1,47 +1,98 @@
-import React from 'react';
-import { ModalType, HomeScreenProps } from '../../types';
+import React, { useState, useEffect } from 'react';
+import { ModalType, Home, Post, AppView } from '../../types';
+import { auth, db } from '../../firebase'; 
+import { collection, query, where, orderBy, onSnapshot, doc, updateDoc, increment } from 'firebase/firestore';
+import Calendar from '../icons/Calendar'
+import Location from '../icons/Location'
+import ChatBubble from '../icons/ChatBubble'
+import ArrowUp from '../icons/ArrowUp'
+import ArrowDown from '../icons/ArrowDown'
 
 
-const CalendarIcon: React.FC<{ className?: string }> = ({ className = "w-4 h-4" }) => (
-    <svg className={className} fill="none" viewBox="0 0 24 24" strokeWidth={1.5} stroke="currentColor">
-        <path strokeLinecap="round" strokeLinejoin="round" d="M6.75 3v2.25M17.25 3v2.25M3 18.75V7.5a2.25 2.25 0 012.25-2.25h13.5A2.25 2.25 0 0121 7.5v11.25m-18 0A2.25 2.25 0 005.25 21h13.5A2.25 2.25 0 0021 18.75m-18 0v-7.5A2.25 2.25 0 015.25 9h13.5A2.25 2.25 0 0121 11.25v7.5" />
-    </svg>
-);
 
-const LocationIcon: React.FC<{ className?: string }> = ({ className = "w-4 h-4" }) => (
-    <svg className={className} fill="none" viewBox="0 0 24 24" strokeWidth={1.5} stroke="currentColor" >
-        <path strokeLinecap="round" strokeLinejoin="round" d="M15 10.5a3 3 0 11-6 0 3 3 0 016 0z" />
-        <path strokeLinecap="round" strokeLinejoin="round" d="M19.5 10.5c0 7.142-7.5 11.25-7.5 11.25S4.5 17.642 4.5 10.5a7.5 7.5 0 1115 0z" />
-    </svg>
-);
+const getUserDomain = () => {
+    const user = auth.currentUser;
+    if (!user || !user.email) return null;
+    return user.email.split('@')[1].toLowerCase();
+};
 
+interface ExtendedHome extends Home {
+    onNavigate?: (view: AppView, data?: any) => void;
+}
 
-const HomeScreen: React.FC<HomeScreenProps> = ({ onOpenModal, announcements, events }) => {
+const Home: React.FC<ExtendedHome> = ({ onOpenModal, announcements, events, onNavigate }) => {
+  const [posts, setPosts] = useState<Post[]>([]);
+  const [loading, setLoading] = useState(true);
+  const [userDomain, setUserDomain] = useState<string | null>(null);
+
+  useEffect(() => {
+    const domain = getUserDomain();
+    setUserDomain(domain);
+
+    if (domain) {
+        const q = query(
+            collection(db, "posts"), 
+            where("collegeDomain", "==", domain),
+            orderBy("timestamp", "desc")
+        );
+
+        const unsubscribe = onSnapshot(q, (snapshot) => {
+            const fetchedPosts = snapshot.docs.map(doc => ({
+                id: doc.id,
+                ...doc.data()
+            })) as Post[];
+            setPosts(fetchedPosts);
+            setLoading(false);
+        }, (error) => {
+            console.error("Error fetching posts:", error);
+            setLoading(false);
+        });
+
+        return () => unsubscribe();
+    } else {
+        setLoading(false);
+    }
+  }, []);
+
+  const handleVote = async (postId: string, amount: number) => {
+      try {
+          const postRef = doc(db, "posts", postId);
+          await updateDoc(postRef, {
+              upvotes: increment(amount)
+          });
+      } catch (err) {
+          console.error("Error voting:", err);
+      }
+  };
+
   return (
     <div className="p-4 bg-gray-100 dark:bg-gray-900 min-h-full pb-16"> 
-      {/* Create Post Card */}
-      <div className="bg-white dark:bg-gray-800 rounded-xl shadow-lg p-6 mb-6 overflow-hidden">
+      
+      {/* 1. Create Post Section */}
+      <div className="bg-white dark:bg-gray-800 rounded-xl shadow-lg p-6 mb-6 overflow-hidden border-l-4 border-indigo-500">
         <div className="flex flex-col md:flex-row justify-between items-start">
-          <div className="mb-4 md:mb-0 md:mr-4">
-            <h2 className="text-xl font-bold text-gray-800 dark:text-gray-100 mb-1">Create a Post</h2>
-            <p className="text-gray-600 dark:text-gray-300 text-sm mb-4">Share your thoughts, questions, or updates with the community.</p>
+          <div className="mb-4 md:mb-0 md:mr-4 w-full">
+            <h2 className="text-xl font-bold text-gray-800 dark:text-gray-100 mb-1">Campus Discussion</h2>
+            <p className="text-gray-600 dark:text-gray-300 text-sm mb-4">
+               Viewing feeds for: <span className="font-bold text-indigo-600">@{userDomain || 'Guest'}</span>
+            </p>
             <button 
               onClick={() => onOpenModal(ModalType.CREATE_POST)}
-              className="bg-indigo-600 text-white border border-indigo-600 px-6 py-2 rounded-lg font-semibold hover:bg-indigo-700 dark:hover:bg-indigo-500 transition-colors text-sm"
+              className="w-full bg-gray-100 text-left text-gray-500 px-4 py-3 rounded-lg hover:bg-gray-200 transition-colors text-sm border border-gray-200"
             >
-              Create Post
+              What's on your mind?
             </button>
           </div>
         </div>
       </div>
 
-      {/* Announcements Section */}
+      {/* 2. Announcements */}
       <div className="mb-6">
         <h3 className="text-lg font-semibold text-gray-700 dark:text-gray-200 mb-3 px-1">Announcements</h3>
         {announcements.length > 0 ? (
           <div className="space-y-3">
             {announcements.map(announcement => (
-              <div key={announcement.id} onClick={() => onOpenModal(ModalType.ANNOUNCEMENT_DETAIL, announcement)} className="bg-white dark:bg-gray-800 p-4 rounded-lg shadow-sm hover:shadow-md transition-shadow cursor-pointer">
+              <div key={announcement.id} onClick={() => onOpenModal(ModalType.ANNOUNCEMENT_DETAIL, announcement)} className="bg-white dark:bg-gray-800 p-4 rounded-lg shadow-sm hover:shadow-md transition-shadow cursor-pointer border-l-4 border-orange-400">
                 <h4 className="font-semibold text-indigo-700 dark:text-indigo-400 mb-1">{announcement.title}</h4>
                 <p className="text-xs text-gray-500 dark:text-gray-400 mb-1.5">{announcement.date}</p>
                 <p className="text-sm text-gray-600 dark:text-gray-300 line-clamp-2">{announcement.content}</p>
@@ -53,19 +104,18 @@ const HomeScreen: React.FC<HomeScreenProps> = ({ onOpenModal, announcements, eve
         )}
       </div>
 
-      {/* Upcoming Events Section */}
-      <div>
+      {/* 3. Upcoming Events */}
+      <div className="mb-8">
         <h3 className="text-lg font-semibold text-gray-700 dark:text-gray-200 mb-3 px-1">Upcoming Events</h3>
         {events.length > 0 ? (
           <div className="space-y-3">
             {events.map(event => (
-              <div key={event.id} onClick={() => onOpenModal(ModalType.EVENT_DETAIL, event)} className="bg-white dark:bg-gray-800 p-4 rounded-lg shadow-sm hover:shadow-md transition-shadow cursor-pointer">
+              <div key={event.id} onClick={() => onOpenModal(ModalType.EVENT_DETAIL, event)} className="bg-white dark:bg-gray-800 p-4 rounded-lg shadow-sm hover:shadow-md transition-shadow cursor-pointer border-l-4 border-green-500">
                 <h4 className="font-semibold text-green-700 dark:text-green-400 mb-1">{event.title}</h4>
                 <div className="flex items-center text-xs text-gray-500 dark:text-gray-400 mb-1.5 space-x-3">
-                  <span className="flex items-center"><CalendarIcon className="mr-1 text-gray-400 dark:text-gray-500"/> {event.date} at {event.time}</span>
-                  <span className="flex items-center"><LocationIcon className="mr-1 text-gray-400 dark:text-gray-500"/> {event.location}</span>
+                  <span className="flex items-center"><Calendar className="mr-1 text-gray-400 dark:text-gray-500"/> {event.date} at {event.time}</span>
+                  <span className="flex items-center"><Location className="mr-1 text-gray-400 dark:text-gray-500"/> {event.location}</span>
                 </div>
-                <p className="text-sm text-gray-600 dark:text-gray-300 line-clamp-2">{event.description}</p>
               </div>
             ))}
           </div>
@@ -73,8 +123,80 @@ const HomeScreen: React.FC<HomeScreenProps> = ({ onOpenModal, announcements, eve
           <p className="text-gray-500 dark:text-gray-400 text-sm bg-white dark:bg-gray-800 p-4 rounded-lg shadow-sm">No upcoming events scheduled.</p>
         )}
       </div>
+
+      {/* 4. DYNAMIC POSTS FEED */}
+      <div>
+         <h3 className="text-lg font-semibold text-gray-700 dark:text-gray-200 mb-3 px-1">Recent Discussions</h3>
+         
+         {loading ? (
+             <div className="text-center py-10">
+                 <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-indigo-600 mx-auto mb-2"></div>
+                 <p className="text-gray-500 text-sm">Loading campus feed...</p>
+             </div>
+         ) : posts.length > 0 ? (
+            <div className="space-y-4">
+                {posts.map(post => (
+                    <div 
+                        key={post.id} 
+                        className="bg-white dark:bg-gray-800 rounded-lg shadow-sm p-4 border border-gray-100 dark:border-gray-700 cursor-pointer hover:shadow-md transition-shadow"
+                        onClick={() => onNavigate && onNavigate(AppView.POST_DETAIL, { postId: post.id })}
+                    >
+                        {/* Post Header */}
+                        <div className="flex items-center mb-3">
+                             <div className="w-8 h-8 rounded-full bg-gradient-to-tr from-indigo-500 to-purple-500 flex items-center justify-center text-white font-bold text-xs mr-3 shadow-sm">
+                                {post.isAnonymous ? '?' : (post.authorName ? post.authorName.charAt(0).toUpperCase() : 'U')}
+                             </div>
+                             <div>
+                                 <p className="text-sm font-semibold text-gray-800 dark:text-gray-200">
+                                     {post.isAnonymous ? "Anonymous Student" : post.authorName}
+                                 </p>
+                                 <p className="text-xs text-gray-400">
+                                    Posted recently
+                                 </p>
+                             </div>
+                        </div>
+
+                        {/* Content */}
+                        <h4 className="text-md font-bold text-gray-900 dark:text-white mb-2 leading-tight">{post.title}</h4>
+                        <p className="text-sm text-gray-600 dark:text-gray-300 mb-4 leading-relaxed line-clamp-3 whitespace-pre-wrap">{post.content}</p>
+
+                        {/* Action Bar */}
+                        <div className="flex items-center justify-between border-t border-gray-100 dark:border-gray-700 pt-3">
+                            <div className="flex items-center space-x-1 bg-gray-50 dark:bg-gray-700/50 rounded-full px-1 py-1" onClick={(e) => e.stopPropagation()}>
+                                <button 
+                                    onClick={() => handleVote(post.id, 1)}
+                                    className="p-1.5 hover:bg-gray-200 rounded-full hover:text-orange-500 text-gray-400 transition-colors"
+                                >
+                                    <ArrowUp className="w-5 h-5"/>
+                                </button>
+                                <span className="text-sm font-bold text-gray-700 dark:text-gray-300 w-6 text-center">{post.upvotes || 0}</span>
+                                <button 
+                                    onClick={() => handleVote(post.id, -1)}
+                                    className="p-1.5 hover:bg-gray-200 rounded-full hover:text-indigo-500 text-gray-400 transition-colors"
+                                >
+                                    <ArrowDown className="w-5 h-5"/>
+                                </button>
+                            </div>
+                            
+                            <button className="flex items-center space-x-1.5 text-gray-500 hover:text-indigo-600 transition-colors py-1 px-2 rounded-md hover:bg-indigo-50 dark:hover:bg-indigo-900/20">
+                                <ChatBubble className="w-5 h-5"/>
+                                <span className="text-sm font-medium">{post.commentsCount || 0} Comments</span>
+                            </button>
+                        </div>
+                    </div>
+                ))}
+            </div>
+         ) : (
+            <div className="text-center py-12 bg-white dark:bg-gray-800 rounded-lg shadow-sm border border-dashed border-gray-300">
+                <p className="text-gray-800 font-medium mb-1">No discussions here yet!</p>
+                <p className="text-gray-500 text-sm mb-4">Be the first to start a thread for {userDomain}.</p>
+                <button onClick={() => onOpenModal(ModalType.CREATE_POST)} className="text-indigo-600 font-semibold text-sm hover:underline">Create a Post</button>
+            </div>
+         )}
+      </div>
+
     </div>
   );
 };
 
-export default HomeScreen;
+export default Home;

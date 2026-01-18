@@ -1,106 +1,112 @@
 import React, { useState, useRef, useEffect } from 'react';
-import { ChatMessage, ChatDetailScreenProps } from '../../types';
-import ArrowLeftIcon from '../icons/ArrowLeft'; // Ensure you have this or replace with SVG
+import { ChatMessage, ChatDetail } from '../../types';
+import ArrowLeft from '../icons/ArrowLeft';
+import { auth, db, storage } from '../../firebase';
+import { collection, addDoc, query, orderBy, onSnapshot, serverTimestamp, updateDoc, doc } from 'firebase/firestore';
+import { ref, uploadString, getDownloadURL } from 'firebase/storage';
+import Image from '../icons/Image'
+import Send from '../icons/Send'
 
-// Extend props locally to include currentUserId since it's needed for UI logic (Left vs Right bubble)
-interface ExtendedChatDetailProps extends ChatDetailScreenProps {
+
+
+interface ExtendedChatDetail extends ChatDetail {
   currentUserId?: string;
 }
 
-const ImageIcon: React.FC<{ className?: string }> = ({ className = "w-6 h-6" }) => (
-  <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" strokeWidth={1.5} stroke="currentColor" className={className}>
-    <path strokeLinecap="round" strokeLinejoin="round" d="M2.25 15.75l5.159-5.159a2.25 2.25 0 013.182 0l5.159 5.159m-1.5-1.5l1.409-1.409a2.25 2.25 0 013.182 0l2.909 2.909m-18 3.75h16.5a1.5 1.5 0 001.5-1.5V6a1.5 1.5 0 00-1.5-1.5H3.75A1.5 1.5 0 002.25 6v12a1.5 1.5 0 001.5 1.5zm10.5-11.25h.008v.008h-.008V8.25zm.158 0a.225.225 0 01.225-.225h.008a.225.225 0 01.225.225v.008a.225.225 0 01-.225.225h-.008a.225.225 0 01-.225-.225V8.25z" />
-  </svg>
-);
-
-const SendIcon: React.FC<{ className?: string }> = ({ className = "w-5 h-5" }) => (
-  <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="currentColor" className={className}>
-    <path d="M3.478 2.405a.75.75 0 00-.926.94l2.432 7.905H13.5a.75.75 0 010 1.5H4.984l-2.432 7.905a.75.75 0 00.926.94 60.519 60.519 0 0018.445-8.986.75.75 0 000-1.218A60.517 60.517 0 003.478 2.405z" />
-  </svg>
-);
-
-const ChatDetailScreen: React.FC<ExtendedChatDetailProps> = ({ 
+const ChatDetail: React.FC<ExtendedChatDetail> = ({ 
   conversationId, 
   onBack, 
   initialConversation, 
-  onSendMessage,
   currentUserId 
 }) => {
-  const [messages, setMessages] = useState<ChatMessage[]>(initialConversation?.messages || []);
+  const [messages, setMessages] = useState<ChatMessage[]>([]);
   const [inputText, setInputText] = useState('');
   const messagesEndRef = useRef<HTMLDivElement>(null);
   const fileInputRef = useRef<HTMLInputElement>(null);
-
-  // Identify the other participant for the header title
   const otherParticipant = initialConversation?.participants.find(p => p.id !== currentUserId);
   const conversationName = otherParticipant?.name || "Chat";
   const conversationAvatar = otherParticipant?.avatarUrl;
 
-  // Load Mock data if no conversation exists (Dev only)
   useEffect(() => {
-    if (!initialConversation && messages.length === 0) {
-      const mockMessages: ChatMessage[] = [
-        { 
-            id: '1', 
-            senderId: 'other_user', 
-            text: `Hello! This is chat ${conversationId}.`, 
-            timestamp: new Date(Date.now() - 100000).toISOString() 
-        },
-        { 
-            id: '2', 
-            senderId: currentUserId || 'me', 
-            text: 'Hi there!', 
-            timestamp: new Date(Date.now() - 50000).toISOString() 
-        },
-      ];
-      setMessages(mockMessages);
-    } else if (initialConversation) {
-        setMessages(initialConversation.messages);
-    }
-  }, [conversationId, initialConversation, currentUserId, messages.length]);
+    if (!conversationId) return;
+    const q = query(
+        collection(db, "chats", conversationId, "messages"),
+        orderBy("timestamp", "asc")
+    );
 
-  // Auto-scroll to bottom
+    const unsubscribe = onSnapshot(q, (snapshot) => {
+        const fetchedMessages = snapshot.docs.map(doc => ({
+            id: doc.id,
+            ...doc.data(),
+            timestamp: doc.data().timestamp?.toDate().toISOString() || new Date().toISOString()
+        })) as ChatMessage[];
+        
+        setMessages(fetchedMessages);
+    });
+
+    return () => unsubscribe();
+  }, [conversationId]);
+
   useEffect(() => {
     messagesEndRef.current?.scrollIntoView({ behavior: "smooth" });
   }, [messages]);
 
-  const handleSend = () => {
-    if (inputText.trim()) {
-      const timestamp = new Date().toISOString();
-      
-      // We don't update state directly here usually, assuming the parent updates props
-      // But for optimistic UI updates:
-      const optimisticMsg: ChatMessage = {
-          id: String(Date.now()),
-          senderId: currentUserId || 'temp_user',
-          text: inputText.trim(),
-          timestamp: timestamp
-      };
-      setMessages(prev => [...prev, optimisticMsg]);
+  const handleSend = async () => {
+    if (!inputText.trim()) return;
 
-      onSendMessage(conversationId, { 
-          text: inputText.trim(), 
-          senderId: currentUserId || 'temp_user',
-          timestamp: timestamp
-      });
-      
-      setInputText('');
+    const textToSend = inputText.trim();
+    setInputText(''); 
+
+    try {
+        await addDoc(collection(db, "chats", conversationId, "messages"), {
+            text: textToSend,
+            senderId: auth.currentUser?.uid,
+            timestamp: serverTimestamp(),
+            type: 'text'
+        });
+
+        const chatRef = doc(db, "chats", conversationId);
+        await updateDoc(chatRef, {
+            lastMessage: textToSend,
+            lastMessageTimestamp: serverTimestamp(),
+            lastSenderId: auth.currentUser?.uid
+        });
+
+    } catch (error) {
+        console.error("Error sending message:", error);
     }
   };
 
-  const handleImageUpload = (event: React.ChangeEvent<HTMLInputElement>) => {
+  const handleImageUpload = async (event: React.ChangeEvent<HTMLInputElement>) => {
     const file = event.target.files?.[0];
-    if (file) {
+    if (file && auth.currentUser) {
       const reader = new FileReader();
-      reader.onloadend = () => {
-        const result = reader.result as string;
-        const timestamp = new Date().toISOString();
+      reader.onloadend = async () => {
+        const base64String = reader.result as string;
         
-        onSendMessage(conversationId, { 
-            imageUrl: result, 
-            senderId: currentUserId || 'temp_user',
-            timestamp: timestamp
-        });
+        try {
+            const imageName = `${Date.now()}_chat_image`;
+            const imageRef = ref(storage, `chat_images/${conversationId}/${imageName}`);
+            await uploadString(imageRef, base64String, 'data_url');
+            const downloadUrl = await getDownloadURL(imageRef);
+
+            await addDoc(collection(db, "chats", conversationId, "messages"), {
+                imageUrl: downloadUrl,
+                senderId: auth.currentUser?.uid,
+                timestamp: serverTimestamp(),
+                type: 'image'
+            });
+
+            const chatRef = doc(db, "chats", conversationId);
+            await updateDoc(chatRef, {
+                lastMessage: "📷 Image",
+                lastMessageTimestamp: serverTimestamp(),
+                lastSenderId: auth.currentUser?.uid
+            });
+
+        } catch (error) {
+            console.error("Error uploading image:", error);
+        }
       };
       reader.readAsDataURL(file);
     }
@@ -111,7 +117,7 @@ const ChatDetailScreen: React.FC<ExtendedChatDetailProps> = ({
       {/* Header */}
       <div className="bg-white dark:bg-gray-800 border-b border-gray-200 dark:border-gray-700 p-4 flex items-center shadow-sm z-10">
         <button onClick={onBack} className="mr-3 p-1 rounded-full hover:bg-gray-100 dark:hover:bg-gray-700 text-gray-600 dark:text-gray-300">
-          <ArrowLeftIcon className="w-6 h-6" />
+          <ArrowLeft className="w-6 h-6" />
         </button>
         
         <div className="flex items-center">
@@ -168,7 +174,7 @@ const ChatDetailScreen: React.FC<ExtendedChatDetailProps> = ({
           className="p-3 text-gray-500 dark:text-gray-400 hover:text-indigo-600 dark:hover:text-indigo-400 hover:bg-gray-100 dark:hover:bg-gray-700 rounded-full transition-colors"
           aria-label="Attach image"
         >
-          <ImageIcon className="w-6 h-6" />
+          <Image className="w-6 h-6" />
         </button>
         <input type="file" accept="image/*" ref={fileInputRef} onChange={handleImageUpload} className="hidden" />
         
@@ -193,16 +199,16 @@ const ChatDetailScreen: React.FC<ExtendedChatDetailProps> = ({
           onClick={handleSend}
           disabled={!inputText.trim()}
           className={`p-3 rounded-full transition-colors flex-shrink-0 ${
-              inputText.trim() 
-              ? 'bg-indigo-600 text-white hover:bg-indigo-700 shadow-md' 
-              : 'bg-gray-200 dark:bg-gray-700 text-gray-400 dark:text-gray-500 cursor-not-allowed'
+            inputText.trim() 
+            ? 'bg-indigo-600 text-white hover:bg-indigo-700 shadow-md' 
+            : 'bg-gray-200 dark:bg-gray-700 text-gray-400 dark:text-gray-500 cursor-not-allowed'
           }`}
         >
-          <SendIcon className="w-5 h-5" />
+          <Send className="w-5 h-5" />
         </button>
       </div>
     </div>
   );
 };
 
-export default ChatDetailScreen;
+export default ChatDetail;

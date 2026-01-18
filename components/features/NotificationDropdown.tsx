@@ -1,8 +1,8 @@
 import React from 'react';
-import { Notification, NotificationDropdownProps } from '../../types';
+import { Notification, NotificationDropdown } from '../../types';
 
 
-const NotificationDropdown: React.FC<NotificationDropdownProps> = ({ notifications, onClose, onNotificationClick, onMarkAllRead }) => {
+const NotificationDropdown: React.FC<NotificationDropdown> = ({ notifications, onClose, onNotificationClick, onMarkAllRead }) => {
   return (
     <div 
         className="absolute top-12 right-0 mt-2 w-72 sm:w-80 bg-white rounded-lg shadow-xl border border-gray-200 z-50 overflow-hidden dark:bg-gray-800 dark:border-gray-700"

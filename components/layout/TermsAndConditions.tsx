@@ -1,9 +1,13 @@
 import React from 'react';
 
 
-const TermsAndConditionsModalContent: React.FC = () => {
+interface TermsAndConditions {
+  onClose: () => void;
+}
+
+const TermsAndConditions: React.FC<TermsAndConditions> = ({ onClose }) => {
   return (
-    <div className="p-1 space-y-3 text-sm text-gray-700 dark:text-gray-300">
+    <div className="p-1 space-y-4 text-sm text-gray-700 dark:text-gray-300">
       <h4 className="text-md font-semibold text-gray-800 dark:text-gray-100">Terms and Conditions</h4>
       <p>Welcome to Closure!</p>
       <p>These terms and conditions outline the rules and regulations for the use of Closure's Application.</p>
@@ -24,14 +28,24 @@ const TermsAndConditionsModalContent: React.FC = () => {
       <p>This Agreement shall begin on the date hereof.</p>
 
       <h5 className="text-sm font-semibold text-gray-800 dark:text-gray-100 pt-2">User Comments:</h5>
-       <p>Parts of this application offer an opportunity for users to post and exchange opinions and information. Closure does not filter, edit, publish or review Comments prior to their presence on the application. Comments do not reflect the views and opinions of Closure, its agents and/or affiliates. Comments reflect the views and opinions of the person who posts their views and opinions.</p>
+       <p>Parts of this application offer an opportunity for users to post and exchange opinions and information. Closure does not filter, edit, publish or review Comments prior to their presence on the application. Comments do not reflect the views and opinions of Closure, its agents and/or affiliates.</p>
 
       <h5 className="text-sm font-semibold text-gray-800 dark:text-gray-100 pt-2">Disclaimer:</h5>
       <p>To the maximum extent permitted by applicable law, we exclude all representations, warranties and conditions relating to our application and the use of this application. Nothing in this disclaimer will limit or exclude our or your liability for death or personal injury; limit or exclude our or your liability for fraud or fraudulent misrepresentation...</p>
       
-      <p className="text-xs text-gray-500 dark:text-gray-400 pt-3">This is a sample Terms & Conditions for demonstration purposes. Last updated: [Current Date].</p>
+      <p className="text-xs text-gray-500 dark:text-gray-400 pt-3 italic">Last updated: {new Date().toLocaleDateString()}</p>
+
+      {/* Close Button */}
+      <div className="pt-4 border-t border-gray-200 dark:border-gray-700 mt-4">
+        <button
+          onClick={onClose}
+          className="w-full bg-gray-100 dark:bg-gray-700 text-gray-700 dark:text-gray-200 py-2.5 px-4 rounded-lg font-semibold hover:bg-gray-200 dark:hover:bg-gray-600 transition-colors text-sm border border-gray-300 dark:border-gray-600"
+        >
+          I Understand
+        </button>
+      </div>
     </div>
   );
 };
 
-export default TermsAndConditionsModalContent;
+export default TermsAndConditions;

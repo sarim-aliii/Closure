@@ -1,10 +1,10 @@
 import React from 'react';
-import { TestimonialScreenProps } from '../../types';
-import UserCircleIcon from '../icons/UserCircle';
+import { Testimonial } from '../../types';
+import UserCircle from '../icons/UserCircle';
 
 
 
-const TestimonialScreen: React.FC<TestimonialScreenProps> = ({ testimonials }) => {
+const Testimonial: React.FC<Testimonial> = ({ testimonials }) => {
   return (
     <div className="p-4">
       <h2 className="text-xl font-semibold text-gray-800 mb-6">Student Testimonials</h2>
@@ -18,7 +18,7 @@ const TestimonialScreen: React.FC<TestimonialScreenProps> = ({ testimonials }) =
                 {testimonial.avatarUrl ? (
                   <img src={testimonial.avatarUrl} alt={testimonial.studentName} className="w-12 h-12 rounded-full mr-4 object-cover"/>
                 ) : (
-                  <UserCircleIcon className="w-12 h-12 text-gray-400 mr-4"/>
+                  <UserCircle className="w-12 h-12 text-gray-400 mr-4"/>
                 )}
                 <div>
                   <h3 className="font-semibold text-gray-800">{testimonial.studentName}</h3>
@@ -34,4 +34,4 @@ const TestimonialScreen: React.FC<TestimonialScreenProps> = ({ testimonials }) =
   );
 };
 
-export default TestimonialScreen;
+export default Testimonial;

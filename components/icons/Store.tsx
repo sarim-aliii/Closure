@@ -1,15 +1,9 @@
 import React from 'react';
 
-interface StoreIconProps {
-  className?: string;
-  isActive?: boolean;
-}
-
-const StoreIcon: React.FC<StoreIconProps> = ({ className = "w-6 h-6", isActive }) => (
-  <svg xmlns="http://www.w3.org/2000/svg" fill={isActive ? "currentColor" : "none"} viewBox="0 0 24 24" strokeWidth={1.5} stroke="currentColor" className={className}>
-    <path strokeLinecap="round" strokeLinejoin="round" d="M13.5 21v-7.5A2.25 2.25 0 0011.25 11.25H10.5V7.5h3V11.25a2.25 2.25 0 002.25 2.25H16.5v7.5m0-7.5h-1.5m1.5 0H18M10.5 7.5H6m4.5 0v3.75m0-3.75c0-1.125-.938-2.25-2.25-2.25S6 6.375 6 7.5m4.5 0c0 .095-.004.19-.012.283M6 7.5L4.5 3m1.5 4.5l1.5-4.5M13.5 7.5l1.5-4.5m0 0L16.5 3M13.5 7.5L15 11.25m-1.5-3.75H12m0 0V11.25" />
-     <path strokeLinecap="round" strokeLinejoin="round" d="M3.75 21h16.5M4.5 3h15M5.25 3v18m13.5-18v18" />
+const Store: React.FC<{ className?: string }> = ({ className = "w-6 h-6" }) => (
+  <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" strokeWidth={1.5} stroke="currentColor" className={className}>
+    <path strokeLinecap="round" strokeLinejoin="round" d="M13.5 21v-7.5a.75.75 0 01.75-.75h3a.75.75 0 01.75.75V21m-4.5 0H2.36m11.14 0H18m0 0h3.64m-1.39 0V9.349m-16.5 11.65V9.35m0 0a3.001 3.001 0 003.75-.615A2.993 2.993 0 009.75 9.75c.896 0 1.7-.393 2.25-1.016a2.993 2.993 0 002.25 1.016c.896 0 1.7-.393 2.25-1.016a3.001 3.001 0 003.75.614m-16.5 0a3.004 3.004 0 01-.621-4.72L4.318 3.44A1.5 1.5 0 015.378 3h13.243a1.5 1.5 0 011.06.44l1.19 1.189a3 3 0 01-.621 4.72m-13.5 8.65h3.75a.75.75 0 00.75-.75V13.5a.75.75 0 00-.75-.75H6.75a.75.75 0 00-.75.75v3.75c0 .415.336.75.75.75z" />
   </svg>
 );
 
-export default StoreIcon;
+export default Store;

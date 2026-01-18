@@ -1,16 +1,10 @@
 import React from 'react';
-import { OrderSuccessModalContentProps } from '../../types';
+import { OrderSuccess } from '../../types';
+import CheckCircle from '../icons/CheckCircle'
+import Share from '../icons/Share'
 
 
-
-const CheckCircleIcon: React.FC<{className?: string}> = ({className = "w-16 h-16"}) => (
-    <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" strokeWidth={1.5} stroke="currentColor" className={className}>
-        <path strokeLinecap="round" strokeLinejoin="round" d="M9 12.75L11.25 15 15 9.75M21 12a9 9 0 11-18 0 9 9 0 0118 0z" />
-    </svg>
-);
-
-
-const OrderSuccessModalContent: React.FC<OrderSuccessModalContentProps> = ({ order, onViewOrders, onContinueShopping, onClose }) => {
+const OrderSuccess: React.FC<OrderSuccess> = ({ order, onViewOrders, onContinueShopping, onClose }) => {
   if (!order) {
     return (
         <div className="p-4 text-center">
@@ -27,16 +21,43 @@ const OrderSuccessModalContent: React.FC<OrderSuccessModalContentProps> = ({ ord
   
   const { id: orderId, totalAmount, paymentMethod, transactionId, paymentDetails, orderDate } = order;
 
+  const handleShare = async () => {
+    if (navigator.share) {
+        try {
+            await navigator.share({
+                title: 'Closure Order Receipt',
+                text: `Order Confirmed! \nOrder ID: ${orderId}\nAmount: ₹${totalAmount}\nItem: Closure Store Purchase`,
+            });
+        } catch (error) {
+            console.log('Error sharing:', error);
+        }
+    } else {
+        alert("Sharing is not supported on this browser.");
+    }
+  };
+
   return (
     <div className="p-2 sm:p-4 text-center">
-      <CheckCircleIcon className="w-12 h-12 sm:w-16 sm:h-16 text-green-500 mx-auto mb-3" />
+      <CheckCircle className="w-12 h-12 sm:w-16 sm:h-16 text-green-500 mx-auto mb-3" />
       <h3 className="text-lg sm:text-xl font-semibold text-gray-800 dark:text-gray-100 mb-1">Order Placed Successfully!</h3>
       <p className="text-xs sm:text-sm text-gray-600 dark:text-gray-300 mb-2">Thank you for your purchase with Closure.</p>
+      
+      {/* Share Button (Top Right Absolute or Inline) */}
+      <div className="flex justify-center mb-4">
+          <button 
+            onClick={handleShare}
+            className="flex items-center text-indigo-600 dark:text-indigo-400 text-xs font-medium hover:underline"
+          >
+            <Share className="w-4 h-4 mr-1" />
+            Share Receipt
+          </button>
+      </div>
+
       <p className="text-xs sm:text-sm text-gray-600 dark:text-gray-300 mb-4">
         Order ID: <span className="font-medium text-indigo-600 dark:text-indigo-400">{orderId}</span>
       </p>
 
-      {/* Mock Transaction Details Section */}
+      {/* Transaction Details Section */}
       <div className="bg-gray-50 dark:bg-gray-700 p-3 sm:p-4 rounded-lg border border-gray-200 dark:border-gray-600 text-left text-xs sm:text-sm mb-5">
         <h4 className="font-semibold text-gray-700 dark:text-gray-200 mb-2 text-sm sm:text-base text-center">Transaction Details</h4>
         <div className="space-y-1.5">
@@ -54,7 +75,7 @@ const OrderSuccessModalContent: React.FC<OrderSuccessModalContentProps> = ({ ord
           </div>
           {paymentMethod === 'UPI' && paymentDetails?.upiTransactionId && (
             <div className="flex justify-between">
-              <span className="text-gray-500 dark:text-gray-400">UPI Transaction ID:</span>
+              <span className="text-gray-500 dark:text-gray-400">UPI Ref:</span>
               <span className="font-medium text-gray-800 dark:text-gray-100 truncate">{paymentDetails.upiTransactionId}</span>
             </div>
           )}
@@ -62,15 +83,11 @@ const OrderSuccessModalContent: React.FC<OrderSuccessModalContentProps> = ({ ord
             <span className="text-gray-500 dark:text-gray-400">Paid to:</span>
             <span className="font-medium text-gray-800 dark:text-gray-100">Closure Store</span>
           </div>
-          {paymentMethod === 'UPI' && paymentDetails?.paymentApp && (
-             <div className="flex justify-between">
-                <span className="text-gray-500 dark:text-gray-400">Using:</span>
-                <span className="font-medium text-gray-800 dark:text-gray-100">{paymentDetails.paymentApp}</span>
-            </div>
-          )}
            <div className="flex justify-between">
-            <span className="text-gray-500 dark:text-gray-400">Date & Time:</span>
-            <span className="font-medium text-gray-800 dark:text-gray-100">{new Date(orderDate).toLocaleString()}</span>
+            <span className="text-gray-500 dark:text-gray-400">Date:</span>
+            <span className="font-medium text-gray-800 dark:text-gray-100">
+                {orderDate instanceof Date ? orderDate.toLocaleString() : new Date().toLocaleString()}
+            </span>
           </div>
         </div>
       </div>
@@ -93,4 +110,4 @@ const OrderSuccessModalContent: React.FC<OrderSuccessModalContentProps> = ({ ord
   );
 };
 
-export default OrderSuccessModalContent;
+export default OrderSuccess;

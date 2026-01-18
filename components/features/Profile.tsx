@@ -1,28 +1,27 @@
 import React, { useState, useEffect, useRef } from 'react';
-import { UserProfile, Order, ProfileScreenProps, AccordionSectionProps } from '../../types'; 
-import { storage } from '../../firebase';
-import { ref, uploadString, getDownloadURL } from "firebase/storage"; // Modular Import
+import { UserProfile, Order, Profile, AccordionSection, Post, AppView } from '../../types'; 
+import { storage, db } from '../../firebase';
+import { ref, uploadString, getDownloadURL } from "firebase/storage";
+import { collection, query, where, getDocs, orderBy } from "firebase/firestore";
+import Pencil from '../icons/Pencil'
+import UserCircle from '../icons/UserCircle'
+import ChevronDown from '../icons/ChevronDown'
+import ChevronUp from '../icons/ChevronUp'
+import PersonField from '../icons/PersonField'
+import MobileField from '../icons/MobileField'
+import EmailField from '../icons/EmailField'
+import InfoField from '../icons/InfoField'
+import HashField from '../icons/HashField'
+import Logout from '../icons/Logout'
+import Calendar from '../icons/Calendar'
+import Gender from '../icons/Gender'
+import Address from '../icons/Address'
+import Orders from '../icons/Orders'
+import Star from '../icons/Star'
 
-// --- Icons (defined outside to keep main component clean) ---
-const UserCircleIcon: React.FC<{ className?: string }> = ({ className="w-16 h-16" }) => <svg className={className} fill="currentColor" viewBox="0 0 24 24"><path d="M24 20.993V24H0v-2.996A14.977 14.977 0 0112.004 15c4.904 0 9.26 2.354 11.996 5.993zM16.002 8.999a4 4 0 11-8 0 4 4 0 018 0z" /></svg>;
-const PencilIcon: React.FC<{ className?: string }> = ({ className="w-4 h-4" }) => <svg className={className} fill="none" viewBox="0 0 24 24" stroke="currentColor"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M15.232 5.232l3.536 3.536m-2.036-5.036a2.5 2.5 0 113.536 3.536L6.5 21.036H3v-3.572L16.732 3.732z" /></svg>;
-const ChevronDownIcon: React.FC<{ className?: string }> = ({ className="w-5 h-5" }) => <svg className={className} fill="none" viewBox="0 0 24 24" stroke="currentColor"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 9l-7 7-7-7" /></svg>;
-const ChevronUpIcon: React.FC<{ className?: string }> = ({ className="w-5 h-5" }) => <svg className={className} fill="none" viewBox="0 0 24 24" stroke="currentColor"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M5 15l7-7 7 7" /></svg>;
-const PersonFieldIcon: React.FC<{ className?: string }> = ({ className="w-5 h-5" }) => <svg className={className} fill="none" viewBox="0 0 24 24" stroke="currentColor"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M16 7a4 4 0 11-8 0 4 4 0 018 0zM12 14a7 7 0 00-7 7h14a7 7 0 00-7-7z" /></svg>;
-const MobileFieldIcon: React.FC<{ className?: string }> = ({ className="w-5 h-5" }) => <svg className={className} fill="none" viewBox="0 0 24 24" stroke="currentColor"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 18h.01M8 21h8a2 2 0 002-2V5a2 2 0 00-2-2H8a2 2 0 00-2 2v14a2 2 0 002 2z" /></svg>;
-const EmailFieldIcon: React.FC<{ className?: string }> = ({ className="w-5 h-5" }) => <svg className={className} fill="none" viewBox="0 0 24 24" stroke="currentColor"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M3 8l7.89 5.26a2 2 0 002.22 0L21 8M5 19h14a2 2 0 002-2V7a2 2 0 00-2-2H5a2 2 0 00-2 2v10a2 2 0 002 2z" /></svg>;
-const InfoFieldIcon: React.FC<{ className?: string }> = ({ className="w-5 h-5" }) => <svg className={className} fill="none" viewBox="0 0 24 24" stroke="currentColor"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M13 16h-1v-4h-1m1-4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z" /></svg>;
-const HashFieldIcon: React.FC<{ className?: string }> = ({ className="w-5 h-5" }) => <svg className={className} fill="none" viewBox="0 0 24 24" stroke="currentColor"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M7 20l4-16m2 16l4-16M5 9h14M5 15h14" /></svg>;
-const LogoutIcon: React.FC<{ className?: string }> = ({ className="w-5 h-5" }) => <svg className={className} fill="none" viewBox="0 0 24 24" strokeWidth={1.5} stroke="currentColor" ><path strokeLinecap="round" strokeLinejoin="round" d="M15.75 9V5.25A2.25 2.25 0 0013.5 3h-6a2.25 2.25 0 00-2.25 2.25v13.5A2.25 2.25 0 007.5 21h6a2.25 2.25 0 002.25-2.25V15m3 0l3-3m0 0l-3-3m3 3H9" /></svg>;
-const CalendarFieldIcon: React.FC<{ className?: string }> = ({ className="w-5 h-5" }) => <svg className={className} fill="none" viewBox="0 0 24 24" stroke="currentColor"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M8 7V3m8 4V3m-9 8h10M5 21h14a2 2 0 002-2V7a2 2 0 00-2-2H5a2 2 0 00-2 2v12a2 2 0 002 2z" /></svg>;
-const GenderFieldIcon: React.FC<{ className?: string }> = ({ className="w-5 h-5" }) => <svg className={className} fill="none" viewBox="0 0 24 24" stroke="currentColor"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M4.293 4.293a1 1 0 011.414 0L12 10.586l6.293-6.293a1 1 0 111.414 1.414L13.414 12l6.293 6.293a1 1 0 01-1.414 1.414L12 13.414l-6.293 6.293a1 1 0 01-1.414-1.414L10.586 12 4.293 5.707a1 1 0 010-1.414zM14 18v2m-4-2v2m4-15a3 3 0 013 3v2a3 3 0 01-3 3h-4a3 3 0 01-3-3V6a3 3 0 013-3h4z" /></svg>;
-const AddressFieldIcon: React.FC<{ className?: string }> = ({ className="w-5 h-5" }) => <svg className={className} fill="none" viewBox="0 0 24 24" stroke="currentColor"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M17.657 16.657L13.414 20.9a1.998 1.998 0 01-2.827 0l-4.244-4.243a8 8 0 1111.314 0z" /><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M15 11a3 3 0 11-6 0 3 3 0 016 0z" /></svg>;
-const OrdersIcon: React.FC<{ className?: string }> = ({ className="w-5 h-5" }) => <svg className={className} fill="none" viewBox="0 0 24 24" stroke="currentColor"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 5H7a2 2 0 00-2 2v12a2 2 0 002 2h10a2 2 0 002-2V7a2 2 0 00-2-2h-2M9 5a2 2 0 002 2h2a2 2 0 002-2M9 5a2 2 0 012-2h2a2 2 0 012 2m-3 7h3m-3 4h3m-6-4h.01M9 16h.01" /></svg>;
 
 
-// --- Sub-components ---
-
-const AccordionSection: React.FC<AccordionSectionProps> = ({ title, badgeNumber, children, defaultOpen = false, isEditing, onEditToggle }) => {
+const AccordionSection: React.FC<AccordionSection> = ({ title, badgeNumber, children, defaultOpen = false, isEditing, onEditToggle }) => {
   const [isOpen, setIsOpen] = useState(defaultOpen);
 
   return (
@@ -48,14 +47,13 @@ const AccordionSection: React.FC<AccordionSectionProps> = ({ title, badgeNumber,
               {isEditing ? 'Cancel' : 'Edit'}
             </button>
           )}
-          {isOpen ? <ChevronUpIcon className="w-5 h-5 text-gray-600 dark:text-gray-400" /> : <ChevronDownIcon className="w-5 h-5 text-gray-600 dark:text-gray-400" />}
+          {isOpen ? <ChevronUp className="w-5 h-5 text-gray-600 dark:text-gray-400" /> : <ChevronDown className="w-5 h-5 text-gray-600 dark:text-gray-400" />}
         </div>
       </button>
       {isOpen && <div className={`p-4 border-t border-gray-200 dark:border-gray-700 ${isEditing ? 'pt-2' : ''}`}>{children}</div>}
     </div>
   );
 };
-
 
 const ProfileField: React.FC<{icon: React.ElementType, label: string, value?: string | null}> = ({icon: Icon, label, value}) => (
     <div className="flex items-start py-2.5">
@@ -96,11 +94,9 @@ const EditableProfileField: React.FC<{label: string, value: string, name: keyof 
 );
 
 
-// --- Main Component ---
-
-const ProfileScreen: React.FC<ProfileScreenProps> = ({ user, onLogout, onUpdateProfile }) => {
+const Profile: React.FC<Profile> = ({ user, onLogout, onUpdateProfile }) => {
   const [activeTab, setActiveTab] = useState('INFO');
-  const tabs = ['INFO', 'ORDERS', 'COURSES', 'PERFORMANCE']; 
+  const tabs = ['INFO', 'POSTS', 'ORDERS', 'COURSES']; 
 
   const [isBasicInfoEditing, setIsBasicInfoEditing] = useState(false);
   const [isPersonalInfoEditing, setIsPersonalInfoEditing] = useState(false);
@@ -109,6 +105,8 @@ const ProfileScreen: React.FC<ProfileScreenProps> = ({ user, onLogout, onUpdateP
   const [editedUser, setEditedUser] = useState<Partial<UserProfile>>({});
   const fileInputRef = useRef<HTMLInputElement>(null);
   const [isUploadingAvatar, setIsUploadingAvatar] = useState(false);
+  const [userPosts, setUserPosts] = useState<Post[]>([]);
+  const [loadingPosts, setLoadingPosts] = useState(false);
 
   useEffect(() => { 
     setEditedUser({}); 
@@ -116,6 +114,29 @@ const ProfileScreen: React.FC<ProfileScreenProps> = ({ user, onLogout, onUpdateP
     setIsPersonalInfoEditing(false);
     setIsAddressEditing(false);
   }, [user]);
+
+  useEffect(() => {
+    if (activeTab === 'POSTS' && user?.id) {
+        const fetchUserPosts = async () => {
+            setLoadingPosts(true);
+            try {
+                const q = query(
+                    collection(db, "posts"),
+                    where("authorId", "==", user.id),
+                    orderBy("timestamp", "desc")
+                );
+                const snapshot = await getDocs(q);
+                const posts = snapshot.docs.map(doc => ({ id: doc.id, ...doc.data() } as Post));
+                setUserPosts(posts);
+            } catch (error) {
+                console.error("Error fetching user posts:", error);
+            } finally {
+                setLoadingPosts(false);
+            }
+        };
+        fetchUserPosts();
+    }
+  }, [activeTab, user?.id]);
 
   const handleEditToggle = (section: 'basic' | 'personal' | 'address') => {
     const currentlyEditing = section === 'basic' ? isBasicInfoEditing : section === 'personal' ? isPersonalInfoEditing : isAddressEditing;
@@ -133,7 +154,6 @@ const ProfileScreen: React.FC<ProfileScreenProps> = ({ user, onLogout, onUpdateP
         dateOfJoining: user.dateOfJoining || '',
         dateOfBirth: user.dateOfBirth || '',
         gender: user.gender || '',
-        // Handle potentially missing address fields
         streetAddress: user.address?.streetAddress || user.streetAddress || '',
         city: user.address?.city || user.city || '',
         postalCode: user.address?.pincode || user.postalCode || '',
@@ -175,7 +195,6 @@ const ProfileScreen: React.FC<ProfileScreenProps> = ({ user, onLogout, onUpdateP
         const base64DataUrl = reader.result as string;
         try {
           const userIdForPath = user.email.replace(/[^a-zA-Z0-9]/g, '_'); 
-          // FIXED: Firebase v9 Modular Syntax
           const avatarStorageRef = ref(storage, `user_avatars/${userIdForPath}/${file.name}`);
           
           await uploadString(avatarStorageRef, base64DataUrl, 'data_url'); 
@@ -193,6 +212,11 @@ const ProfileScreen: React.FC<ProfileScreenProps> = ({ user, onLogout, onUpdateP
     }
   };
 
+  const handleLogoutClick = () => {
+      if(window.confirm("Are you sure you want to log out?")) {
+          onLogout();
+      }
+  }
 
   const renderOrderStatus = (status: Order['status']) => {
     const statusClasses = {
@@ -205,14 +229,11 @@ const ProfileScreen: React.FC<ProfileScreenProps> = ({ user, onLogout, onUpdateP
     return <span className={`px-2 py-0.5 text-xs font-medium rounded-full ${statusClasses[status] || 'bg-gray-100 text-gray-700'}`}>{status}</span>;
   }
 
-  // Helper to safely render dates from various potential Firestore formats
   const formatDate = (dateVal: any) => {
     try {
         if (!dateVal) return '';
         if (dateVal instanceof Date) return dateVal.toLocaleDateString();
-        // Handle Firestore Timestamp (has toDate method)
         if (typeof dateVal.toDate === 'function') return dateVal.toDate().toLocaleDateString();
-        // Handle ISO String
         if (typeof dateVal === 'string') return new Date(dateVal).toLocaleDateString();
         return '';
     } catch (e) {
@@ -236,7 +257,7 @@ const ProfileScreen: React.FC<ProfileScreenProps> = ({ user, onLogout, onUpdateP
              ) : user.avatarUrl ? (
                 <img src={user.avatarUrl} alt={user.name} className="w-16 h-16 rounded-full object-cover ring-2 ring-indigo-300 dark:ring-indigo-600" />
             ) : (
-                <UserCircleIcon className="w-16 h-16 text-gray-400 dark:text-gray-500" />
+                <UserCircle className="w-16 h-16 text-gray-400 dark:text-gray-500" />
             )}
             <button
                 onClick={() => !isUploadingAvatar && fileInputRef.current?.click()}
@@ -244,7 +265,7 @@ const ProfileScreen: React.FC<ProfileScreenProps> = ({ user, onLogout, onUpdateP
                 className="absolute bottom-0 right-0 bg-indigo-600 text-white p-1.5 rounded-full shadow-md opacity-0 group-hover:opacity-100 transition-opacity duration-200 hover:bg-indigo-700 focus:outline-none focus:ring-2 focus:ring-indigo-500 focus:ring-offset-2 dark:focus:ring-offset-gray-800 disabled:opacity-50"
                 aria-label="Change profile picture"
             >
-                <PencilIcon className="w-3 h-3" />
+                <Pencil className="w-3 h-3" />
             </button>
             <input 
                 type="file" 
@@ -255,9 +276,19 @@ const ProfileScreen: React.FC<ProfileScreenProps> = ({ user, onLogout, onUpdateP
                 disabled={isUploadingAvatar}
             />
           </div>
-          <div className="ml-4 min-w-0">
+          <div className="ml-4 min-w-0 flex-grow">
             <h2 className="text-lg font-semibold text-gray-800 dark:text-gray-100 truncate">{user.name}</h2>
             <p className="text-sm text-gray-500 dark:text-gray-400 truncate">{user.email}</p>
+            
+            <div className="flex items-center mt-2 space-x-2">
+                <span className="inline-flex items-center px-2 py-0.5 rounded text-xs font-medium bg-purple-100 text-purple-800 dark:bg-purple-900/50 dark:text-purple-300">
+                    {user.organizationCode === 'STUDENT' ? '🎓 Student' : '🏫 Faculty'}
+                </span>
+                <span className="inline-flex items-center px-2 py-0.5 rounded text-xs font-medium bg-yellow-100 text-yellow-800 dark:bg-yellow-900/50 dark:text-yellow-300">
+                    <Star className="w-3 h-3 mr-1"/>
+                    {(user as any).karma || 0} Karma
+                </span>
+            </div>
           </div>
         </div>
       </div>
@@ -295,12 +326,12 @@ const ProfileScreen: React.FC<ProfileScreenProps> = ({ user, onLogout, onUpdateP
                 </>
               ) : (
                 <>
-                  <ProfileField icon={PersonFieldIcon} label="Name" value={user.name} />
-                  <ProfileField icon={MobileFieldIcon} label="Mobile Number" value={user.mobileNumber} />
-                  <ProfileField icon={EmailFieldIcon} label="Email" value={user.email} />
-                  <ProfileField icon={InfoFieldIcon} label="About" value={user.about || "Learner, Explorer, Dreamer"} />
-                  <ProfileField icon={HashFieldIcon} label="Roll Number" value={user.rollNumber || "CS-1024"} />
-                  <ProfileField icon={CalendarFieldIcon} label="Date of Joining" value={user.dateOfJoining ? formatDate(user.dateOfJoining) : "N/A"} />
+                  <ProfileField icon={PersonField} label="Name" value={user.name} />
+                  <ProfileField icon={MobileField} label="Mobile Number" value={user.mobileNumber} />
+                  <ProfileField icon={EmailField} label="Email" value={user.email} />
+                  <ProfileField icon={InfoField} label="About" value={user.about || "Learner, Explorer, Dreamer"} />
+                  <ProfileField icon={HashField} label="Roll Number" value={user.rollNumber || "CS-1024"} />
+                  <ProfileField icon={Calendar} label="Date of Joining" value={user.dateOfJoining ? formatDate(user.dateOfJoining) : "N/A"} />
                 </>
               )}
             </AccordionSection>
@@ -314,8 +345,8 @@ const ProfileScreen: React.FC<ProfileScreenProps> = ({ user, onLogout, onUpdateP
                 </>
               ) : (
                 <>
-                  <ProfileField icon={CalendarFieldIcon} label="Date of Birth" value={user.dateOfBirth ? formatDate(user.dateOfBirth) : null} />
-                  <ProfileField icon={GenderFieldIcon} label="Gender" value={user.gender} />
+                  <ProfileField icon={Calendar} label="Date of Birth" value={user.dateOfBirth ? formatDate(user.dateOfBirth) : null} />
+                  <ProfileField icon={Gender} label="Gender" value={user.gender} />
                   {!user.dateOfBirth && !user.gender && <p className="text-gray-500 dark:text-gray-400 text-sm p-2">No personal details provided.</p>}
                 </>
               )}
@@ -333,11 +364,11 @@ const ProfileScreen: React.FC<ProfileScreenProps> = ({ user, onLogout, onUpdateP
                   </>
                 ) : (
                   <>
-                    <ProfileField icon={AddressFieldIcon} label="Street Address" value={user.streetAddress || user.address?.streetAddress} />
-                    <ProfileField icon={AddressFieldIcon} label="City" value={user.city || user.address?.city} />
-                    <ProfileField icon={AddressFieldIcon} label="State" value={user.state || user.address?.state} />
-                    <ProfileField icon={HashFieldIcon} label="Postal Code" value={user.postalCode || user.address?.pincode} />
-                    <ProfileField icon={AddressFieldIcon} label="Country" value={user.country || user.address?.country} />
+                    <ProfileField icon={Address} label="Street Address" value={user.streetAddress || user.address?.streetAddress} />
+                    <ProfileField icon={Address} label="City" value={user.city || user.address?.city} />
+                    <ProfileField icon={Address} label="State" value={user.state || user.address?.state} />
+                    <ProfileField icon={HashField} label="Postal Code" value={user.postalCode || user.address?.pincode} />
+                    <ProfileField icon={Address} label="Country" value={user.country || user.address?.country} />
                     {!user.streetAddress && !user.address && <p className="text-gray-500 dark:text-gray-400 text-sm p-2">No address details provided.</p>}
                   </>
                 )}
@@ -345,15 +376,41 @@ const ProfileScreen: React.FC<ProfileScreenProps> = ({ user, onLogout, onUpdateP
 
              <div className="mt-8">
                 <button 
-                    onClick={onLogout}
+                    onClick={handleLogoutClick}
                     className="w-full flex items-center justify-center bg-red-100 dark:bg-red-900/50 text-red-600 dark:text-red-400 py-3 px-4 rounded-lg font-semibold hover:bg-red-200 dark:hover:bg-red-800/70 transition-colors text-sm shadow-sm border border-red-200 dark:border-red-700/50"
                 >
-                    <LogoutIcon className="w-5 h-5 mr-2"/>
+                    <Logout className="w-5 h-5 mr-2"/>
                     Sign Out
                 </button>
             </div>
           </div>
         )}
+
+        {/* --- MY POSTS TAB (New) --- */}
+        {activeTab === 'POSTS' && (
+            <div className="space-y-4">
+                <h3 className="text-lg font-semibold text-gray-700 dark:text-gray-200 mb-1">My Activity</h3>
+                {loadingPosts ? (
+                    <p className="text-center text-gray-500">Loading your posts...</p>
+                ) : userPosts.length > 0 ? (
+                    userPosts.map(post => (
+                        <div key={post.id} className="bg-white dark:bg-gray-800 p-4 rounded-lg shadow-sm border border-gray-100 dark:border-gray-700">
+                            <h4 className="font-bold text-gray-800 dark:text-gray-100 mb-1 truncate">{post.title}</h4>
+                            <p className="text-sm text-gray-600 dark:text-gray-400 line-clamp-2 mb-2">{post.content}</p>
+                            <div className="flex text-xs text-gray-500 justify-between mt-2">
+                                <span>{new Date(post.timestamp).toLocaleDateString()}</span>
+                                <span className="font-medium text-indigo-600">{post.upvotes} Likes • {post.commentsCount} Comments</span>
+                            </div>
+                        </div>
+                    ))
+                ) : (
+                    <div className="text-center p-6 bg-white dark:bg-gray-800 rounded-lg">
+                        <p className="text-gray-500 dark:text-gray-400">You haven't posted anything yet.</p>
+                    </div>
+                )}
+            </div>
+        )}
+
         {activeTab === 'ORDERS' && (
           <div className="space-y-4">
               <h3 className="text-lg font-semibold text-gray-700 dark:text-gray-200 mb-1">My Orders</h3>
@@ -385,7 +442,7 @@ const ProfileScreen: React.FC<ProfileScreenProps> = ({ user, onLogout, onUpdateP
               ))
             ) : (
               <div className="text-center text-gray-500 dark:text-gray-400 mt-10 p-6 bg-white dark:bg-gray-800 rounded-lg shadow">
-                <OrdersIcon className="mx-auto h-12 w-12 text-gray-400 dark:text-gray-500" />
+                <Orders className="mx-auto h-12 w-12 text-gray-400 dark:text-gray-500" />
                 <h3 className="mt-2 text-sm font-medium text-gray-900 dark:text-gray-50">No orders yet.</h3>
                 <p className="mt-1 text-sm text-gray-500 dark:text-gray-400">Start shopping to see your orders here!</p>
               </div>
@@ -393,10 +450,9 @@ const ProfileScreen: React.FC<ProfileScreenProps> = ({ user, onLogout, onUpdateP
           </div>
         )}
         {activeTab === 'COURSES' && <div className="text-center p-10 text-gray-500">Coming Soon</div>}
-        {activeTab === 'PERFORMANCE' && <div className="text-center p-10 text-gray-500">Coming Soon</div>}
       </div>
     </div>
   );
 };
 
-export default ProfileScreen;
+export default Profile;

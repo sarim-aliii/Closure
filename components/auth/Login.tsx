@@ -1,13 +1,18 @@
 import React, { useState } from 'react';
-import AtSymbolIcon from '../icons/AtSymbol';
-import LockClosedIcon from '../icons/LockClosed';
-import EyeIcon from '../icons/Eye';
-import EyeSlashIcon from '../icons/EyeSlash';
-import { ModalType, LoginScreenProps } from '../../types';
+import AtSymbol from '../icons/AtSymbol';
+import LockClosed from '../icons/LockClosed';
+import Eye from '../icons/Eye';
+import EyeSlash from '../icons/EyeSlash';
+import { ModalType, Login } from '../../types';
 
 
-
-const LoginScreen: React.FC<LoginScreenProps> = ({ onLoginAttempt, onNavigateToSignup, onOpenModal, successMessage, errorMessage }) => {
+const Login: React.FC<Login> = ({ 
+  onLoginAttempt, 
+  onNavigateToSignup, 
+  onOpenModal, 
+  successMessage, 
+  errorMessage 
+}) => {
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
   const [showPassword, setShowPassword] = useState(false);
@@ -43,8 +48,10 @@ const LoginScreen: React.FC<LoginScreenProps> = ({ onLoginAttempt, onNavigateToS
 
   return (
     <div className="min-h-screen flex flex-col bg-gradient-to-br from-indigo-700 via-purple-600 to-pink-600">
+      
+      {/* Top Section: Branding */}
       <div className="flex-grow flex flex-col items-center justify-center p-6 text-white text-center">
-         <div className="bg-white/20 backdrop-blur-md p-4 rounded-lg shadow-xl mb-6">
+         <div className="bg-white/20 backdrop-blur-md p-4 rounded-xl shadow-xl mb-6">
            <svg className="w-16 h-16 text-white" fill="currentColor" viewBox="0 0 24 24">
             <path d="M12 2L2 7l10 5 10-5-10-5zM2 17l10 5 10-5M2 12l10 5 10-5"></path>
           </svg>
@@ -53,7 +60,10 @@ const LoginScreen: React.FC<LoginScreenProps> = ({ onLoginAttempt, onNavigateToS
         <p className="text-lg opacity-90 mb-8">Login to access Closure.</p>
       </div>
 
+      {/* Bottom Section: Form */}
       <div className="bg-white p-6 sm:p-8 rounded-t-3xl shadow-top-xl">
+        
+        {/* Messages */}
         {successMessage && (
           <div className="mb-4 p-3 bg-green-100 text-green-700 border border-green-300 rounded-lg text-sm text-center">
             {successMessage}
@@ -70,11 +80,12 @@ const LoginScreen: React.FC<LoginScreenProps> = ({ onLoginAttempt, onNavigateToS
           </div>
         )}
         
+        {/* Email Input */}
         <div className="mb-4">
           <label htmlFor="login-email" className="block text-sm font-medium text-gray-700 mb-1">Email Address</label>
           <div className="relative">
             <div className="absolute inset-y-0 left-0 pl-3 flex items-center pointer-events-none">
-              <AtSymbolIcon className="h-5 w-5 text-gray-400" />
+              <AtSymbol className="h-5 w-5 text-gray-400" />
             </div>
             <input
               type="email"
@@ -86,15 +97,17 @@ const LoginScreen: React.FC<LoginScreenProps> = ({ onLoginAttempt, onNavigateToS
               required
               disabled={isLoading}
               autoCapitalize="none"
+              autoComplete="username"
             />
           </div>
         </div>
 
-        <div className="mb-1">
+        {/* Password Input */}
+        <div className="mb-2">
           <label htmlFor="login-password" className="block text-sm font-medium text-gray-700 mb-1">Password</label>
           <div className="relative">
             <div className="absolute inset-y-0 left-0 pl-3 flex items-center pointer-events-none">
-              <LockClosedIcon className="h-5 w-5 text-gray-400" />
+              <LockClosed className="h-5 w-5 text-gray-400" />
             </div>
             <input
               type={showPassword ? "text" : "password"}
@@ -105,6 +118,7 @@ const LoginScreen: React.FC<LoginScreenProps> = ({ onLoginAttempt, onNavigateToS
               className="w-full pl-10 pr-10 py-2.5 border border-gray-300 rounded-lg shadow-sm focus:ring-indigo-500 focus:border-indigo-500 sm:text-sm"
               required
               disabled={isLoading}
+              autoComplete="current-password"
             />
             <button
               type="button"
@@ -113,28 +127,37 @@ const LoginScreen: React.FC<LoginScreenProps> = ({ onLoginAttempt, onNavigateToS
               aria-label={showPassword ? "Hide password" : "Show password"}
               disabled={isLoading}
             >
-              {showPassword ? <EyeSlashIcon className="h-5 w-5" /> : <EyeIcon className="h-5 w-5" />}
+              {showPassword ? <EyeSlash className="h-5 w-5" /> : <Eye className="h-5 w-5" />}
             </button>
           </div>
         </div>
+
+        {/* Forgot Password */}
         <div className="text-right mb-6">
           <button 
             onClick={handleForgotPassword}
             disabled={isLoading}
-            className="text-xs text-indigo-600 hover:text-indigo-500 focus:outline-none focus:underline disabled:opacity-50"
+            className="text-xs font-medium text-indigo-600 hover:text-indigo-500 focus:outline-none focus:underline disabled:opacity-50"
           >
             Forgot password?
           </button>
         </div>
         
+        {/* Login Button */}
         <button 
           onClick={handleLogin}
           disabled={isLoading}
           className="w-full bg-indigo-600 text-white py-3 px-4 rounded-lg flex items-center justify-center font-semibold hover:bg-indigo-700 transition-colors text-lg shadow-md focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-indigo-500 disabled:opacity-50"
         >
-          {isLoading ? 'Logging in...' : 'Login'}
+          {isLoading ? (
+             <span className="flex items-center">
+               <svg className="animate-spin -ml-1 mr-2 h-5 w-5 text-white" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24"><circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4"></circle><path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"></path></svg>
+               Logging in...
+             </span>
+          ) : 'Login'}
         </button>
 
+        {/* Signup Link */}
         <p className="mt-6 text-center text-sm text-gray-600">
           Don't have an account?{' '}
           <button 
@@ -150,4 +173,4 @@ const LoginScreen: React.FC<LoginScreenProps> = ({ onLoginAttempt, onNavigateToS
   );
 };
 
-export default LoginScreen;
+export default Login;

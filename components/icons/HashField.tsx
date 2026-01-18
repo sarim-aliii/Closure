@@ -1,0 +1,5 @@
+import React from 'react';
+
+const HashField: React.FC<{ className?: string }> = ({ className="w-5 h-5" }) => <svg className={className} fill="none" viewBox="0 0 24 24" stroke="currentColor"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M7 20l4-16m2 16l4-16M5 9h14M5 15h14" /></svg>;
+
+export default HashField;

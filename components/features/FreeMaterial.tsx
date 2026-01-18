@@ -1,21 +1,52 @@
-import React from 'react';
-import { FreeMaterialItem, ModalType, FreeMaterialScreenProps } from '../../types';
+import React, { useState, useEffect } from 'react';
+import { FreeMaterialItem, ModalType, FreeMaterial } from '../../types';
+import { auth, db } from '../../firebase'; 
+import { collection, query, where, onSnapshot } from 'firebase/firestore';
+import Link from '../icons/Link'
+import DocumentText from '../icons/DocumentText'
 
 
+const getUserDomain = () => {
+    const user = auth.currentUser;
+    if (!user || !user.email) return null;
+    return user.email.split('@')[1].toLowerCase();
+};
 
-const LinkIcon: React.FC<{ className?: string }> = ({ className = "w-5 h-5" }) => (
- <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" strokeWidth={1.5} stroke="currentColor" className={className}>
-  <path strokeLinecap="round" strokeLinejoin="round" d="M13.19 8.688a4.5 4.5 0 011.242 7.244l-4.5 4.5a4.5 4.5 0 01-6.364-6.364l1.757-1.757m13.35-.622l1.757-1.757a4.5 4.5 0 00-6.364-6.364l-4.5 4.5a4.5 4.5 0 001.242 7.244" />
-</svg>
-);
-const DocumentTextIcon: React.FC<{ className?: string }> = ({ className = "w-4 h-4" }) => (
-    <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" strokeWidth={1.5} stroke="currentColor" className={className}>
-        <path strokeLinecap="round" strokeLinejoin="round" d="M19.5 14.25v-2.625a3.375 3.375 0 00-3.375-3.375h-1.5A1.125 1.125 0 0113.5 7.125v-1.5a3.375 3.375 0 00-3.375-3.375H8.25m0 12.75h7.5m-7.5 3H12M10.5 2.25H5.625c-.621 0-1.125.504-1.125 1.125v17.25c0 .621.504 1.125 1.125 1.125h12.75c.621 0 1.125-.504 1.125-1.125V11.25a9 9 0 00-9-9z" />
-    </svg>
-);
+const FreeMaterial: React.FC<FreeMaterial> = ({ onOpenModal }) => {
+  const [items, setItems] = useState<FreeMaterialItem[]>([]);
+  const [loading, setLoading] = useState(true);
+  const [userDomain, setUserDomain] = useState<string | null>(null);
 
+  // --- FETCH MATERIALS LOGIC ---
+  useEffect(() => {
+    const domain = getUserDomain();
+    setUserDomain(domain);
 
-const FreeMaterialScreen: React.FC<FreeMaterialScreenProps> = ({ materials, onOpenModal }) => {
+    if (domain) {
+        const q = query(
+            collection(db, "free_materials"),
+            where("collegeDomain", "==", domain) 
+        );
+
+        const unsubscribe = onSnapshot(q, (snapshot) => {
+            const fetchedMaterials = snapshot.docs.map(doc => ({
+                id: doc.id,
+                ...doc.data()
+            })) as FreeMaterialItem[];
+            
+            setItems(fetchedMaterials);
+            setLoading(false);
+        }, (error) => {
+            console.error("Error fetching materials:", error);
+            setLoading(false);
+        });
+
+        return () => unsubscribe();
+    } else {
+        setLoading(false);
+    }
+  }, []);
+
   const handleAccessMaterial = (item: FreeMaterialItem) => {
     if (item.type === 'article' && item.content) {
       onOpenModal(ModalType.VIEW_FREE_MATERIAL_CONTENT, { title: item.title, content: item.content });
@@ -27,23 +58,48 @@ const FreeMaterialScreen: React.FC<FreeMaterialScreenProps> = ({ materials, onOp
   };
 
   return (
-    <div className="p-4">
-      <h2 className="text-xl font-semibold text-gray-800 dark:text-gray-100 mb-4">Free Material</h2>
-      {materials.length === 0 ? (
-        <p className="text-gray-500 dark:text-gray-400">No free materials available at the moment.</p>
+    <div className="p-4 bg-gray-100 dark:bg-gray-900 min-h-full">
+      <div className="mb-4">
+          <h2 className="text-xl font-semibold text-gray-800 dark:text-gray-100">Free Material</h2>
+          <p className="text-xs text-indigo-600 dark:text-indigo-400">
+            Resources for {userDomain ? `@${userDomain}` : 'you'}
+          </p>
+      </div>
+
+      {loading ? (
+        <div className="flex justify-center pt-10">
+            <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-indigo-600"></div>
+        </div>
+      ) : items.length === 0 ? (
+        <div className="text-center py-10 bg-white dark:bg-gray-800 rounded-lg shadow-sm border border-dashed border-gray-300">
+            <DocumentText className="w-10 h-10 mx-auto text-gray-300 mb-2"/>
+            <p className="text-gray-500 dark:text-gray-400">No free materials uploaded for your college yet.</p>
+        </div>
       ) : (
         <ul className="space-y-3">
-          {materials.map(item => (
-            <li key={item.id} className="bg-white dark:bg-gray-700 p-4 rounded-lg shadow-sm">
-              <h3 className="font-medium text-gray-800 dark:text-gray-100 mb-1">{item.title}</h3>
-              <p className="text-xs text-gray-500 dark:text-gray-400 capitalize mb-1">{item.type.replace('_', ' ')}</p>
-              <p className="text-sm text-gray-600 dark:text-gray-300 mb-3">{item.description}</p>
+          {items.map(item => (
+            <li key={item.id} className="bg-white dark:bg-gray-800 p-4 rounded-lg shadow-sm border-l-4 border-indigo-500 hover:shadow-md transition-shadow">
+              <div className="flex justify-between items-start">
+                  <div>
+                    <h3 className="font-medium text-gray-800 dark:text-gray-100 mb-1">{item.title}</h3>
+                    <p className="text-xs text-indigo-600 dark:text-indigo-400 font-semibold uppercase tracking-wide mb-1">
+                        {item.type.replace('_', ' ')}
+                    </p>
+                  </div>
+                  {/* Icon Badge */}
+                  <div className="p-2 bg-gray-100 dark:bg-gray-700 rounded-full text-gray-500">
+                    {item.type === 'article' ? <DocumentText /> : <Link />}
+                  </div>
+              </div>
+              
+              <p className="text-sm text-gray-600 dark:text-gray-300 mb-4 line-clamp-2">{item.description}</p>
+              
               <button
                 onClick={() => handleAccessMaterial(item)}
-                className="px-4 py-2 text-sm font-medium text-indigo-600 dark:text-indigo-300 bg-indigo-50 dark:bg-indigo-700/50 rounded-md hover:bg-indigo-100 dark:hover:bg-indigo-600/50 transition-colors flex items-center"
+                className="w-full py-2 text-sm font-medium text-indigo-600 dark:text-indigo-300 bg-indigo-50 dark:bg-indigo-900/30 rounded-md hover:bg-indigo-100 dark:hover:bg-indigo-900/50 transition-colors flex items-center justify-center border border-indigo-200 dark:border-indigo-800"
               >
-                {item.type === 'article' ? <DocumentTextIcon className="w-4 h-4 mr-2" /> : <LinkIcon className="w-4 h-4 mr-2" />}
-                Access Material
+                {item.type === 'article' ? <DocumentText className="w-4 h-4 mr-2" /> : <Link className="w-4 h-4 mr-2" />}
+                {item.type === 'video_link' ? 'Watch Video' : 'View Material'}
               </button>
             </li>
           ))}
@@ -53,4 +109,4 @@ const FreeMaterialScreen: React.FC<FreeMaterialScreenProps> = ({ materials, onOp
   );
 };
 
-export default FreeMaterialScreen;
+export default FreeMaterial;

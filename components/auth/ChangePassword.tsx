@@ -1,11 +1,15 @@
 import React, { useState } from 'react';
-import LockClosedIcon from '../icons/LockClosed';
-import EyeIcon from '../icons/Eye';
-import EyeSlashIcon from '../icons/EyeSlash';
-import { ChangePasswordModalContentProps } from '../../types'
+import LockClosed from '../icons/LockClosed';
+import Eye from '../icons/Eye';
+import EyeSlash from '../icons/EyeSlash';
+import { ChangePassword, ModalType } from '../../types';
 
 
-const ChangePasswordModalContent: React.FC<ChangePasswordModalContentProps> = ({ onChangePassword, onClose }) => {
+interface ExtendedChangePassword extends ChangePassword {
+  onOpenModal?: (modalType: ModalType) => void;
+}
+
+const ChangePassword: React.FC<ExtendedChangePassword> = ({ onChangePassword, onClose, onOpenModal }) => {
   const [currentPassword, setCurrentPassword] = useState('');
   const [newPassword, setNewPassword] = useState('');
   const [confirmNewPassword, setConfirmNewPassword] = useState('');
@@ -35,8 +39,10 @@ const ChangePasswordModalContent: React.FC<ChangePasswordModalContentProps> = ({
     const success = await onChangePassword(currentPassword, newPassword);
     setIsLoading(false);
     
-    if (!success && !error) { 
-
+    if (success) {
+        onClose(); 
+    } else {
+        if(!error) setError("Failed to change password. Check your current password.");
     }
   };
   
@@ -53,7 +59,7 @@ const ChangePasswordModalContent: React.FC<ChangePasswordModalContentProps> = ({
       <label htmlFor={id} className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">{label}</label>
       <div className="relative">
         <div className="absolute inset-y-0 left-0 pl-3 flex items-center pointer-events-none">
-          <LockClosedIcon className="h-5 w-5 text-gray-400 dark:text-gray-500" />
+          <LockClosed className="h-5 w-5 text-gray-400 dark:text-gray-500" />
         </div>
         <input
           type={show ? "text" : "password"}
@@ -72,12 +78,11 @@ const ChangePasswordModalContent: React.FC<ChangePasswordModalContentProps> = ({
           aria-label={show ? "Hide password" : "Show password"}
           disabled={isLoading}
         >
-          {show ? <EyeSlashIcon className="h-5 w-5" /> : <EyeIcon className="h-5 w-5" />}
+          {show ? <EyeSlash className="h-5 w-5" /> : <Eye className="h-5 w-5" />}
         </button>
       </div>
     </div>
   );
-
 
   return (
     <div className="p-1">
@@ -86,6 +91,7 @@ const ChangePasswordModalContent: React.FC<ChangePasswordModalContentProps> = ({
           {error}
         </div>
       )}
+      
       <PasswordInput 
         id="currentPassword"
         label="Current Password"
@@ -94,6 +100,18 @@ const ChangePasswordModalContent: React.FC<ChangePasswordModalContentProps> = ({
         show={showCurrentPassword}
         onToggleShow={() => setShowCurrentPassword(!showCurrentPassword)}
       />
+      
+      {/* Forgot Password Link - UX Improvement */}
+      <div className="flex justify-end mb-4 -mt-2">
+        <button
+            type="button"
+            onClick={() => onOpenModal && onOpenModal(ModalType.FORGOT_PASSWORD)}
+            className="text-xs text-indigo-600 dark:text-indigo-400 hover:underline"
+        >
+            Forgot current password?
+        </button>
+      </div>
+
       <PasswordInput 
         id="newPassword"
         label="New Password"
@@ -111,7 +129,8 @@ const ChangePasswordModalContent: React.FC<ChangePasswordModalContentProps> = ({
         show={showConfirmNewPassword}
         onToggleShow={() => setShowConfirmNewPassword(!showConfirmNewPassword)}
       />
-      <div className="flex justify-end space-x-3 mt-2">
+      
+      <div className="flex justify-end space-x-3 mt-4 pt-2 border-t border-gray-100 dark:border-gray-700">
         <button
           type="button"
           onClick={onClose}
@@ -124,8 +143,11 @@ const ChangePasswordModalContent: React.FC<ChangePasswordModalContentProps> = ({
           type="button"
           onClick={handleSubmit}
           disabled={isLoading || !currentPassword || !newPassword || newPassword !== confirmNewPassword || newPassword.length < 6}
-          className="px-4 py-2 text-sm font-medium text-white bg-indigo-600 rounded-md hover:bg-indigo-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-indigo-500 disabled:opacity-50"
+          className="px-4 py-2 text-sm font-medium text-white bg-indigo-600 rounded-md hover:bg-indigo-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-indigo-500 disabled:opacity-50 flex items-center"
         >
+          {isLoading && (
+             <svg className="animate-spin -ml-1 mr-2 h-4 w-4 text-white" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24"><circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4"></circle><path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"></path></svg>
+          )}
           {isLoading ? 'Changing...' : 'Change Password'}
         </button>
       </div>
@@ -133,4 +155,4 @@ const ChangePasswordModalContent: React.FC<ChangePasswordModalContentProps> = ({
   );
 };
 
-export default ChangePasswordModalContent;
+export default ChangePassword;

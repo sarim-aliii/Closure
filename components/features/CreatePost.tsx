@@ -1,22 +1,19 @@
 import React, { useState, useRef } from 'react';
-import { storage } from '../../firebase'; 
+import { storage, db, auth } from '../../firebase'; 
 import { ref, uploadString, getDownloadURL } from "firebase/storage";
-import { CreatePostModalContentProps } from '../../types';
+import { collection, addDoc, serverTimestamp } from "firebase/firestore";
+import { CreatePost } from '../../types';
+import Photo from '../icons/Photo'
+import XCircle from '../icons/XCircle'
 
 
-const PhotoIcon: React.FC<{ className?: string }> = ({ className = "w-5 h-5" }) => (
-    <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" strokeWidth={1.5} stroke="currentColor" className={className}>
-        <path strokeLinecap="round" strokeLinejoin="round" d="M2.25 15.75l5.159-5.159a2.25 2.25 0 013.182 0l5.159 5.159m-1.5-1.5l1.409-1.409a2.25 2.25 0 013.182 0l2.909 2.909m-18 3.75h16.5a1.5 1.5 0 001.5-1.5V6a1.5 1.5 0 00-1.5-1.5H3.75A1.5 1.5 0 002.25 6v12a1.5 1.5 0 001.5 1.5zm10.5-11.25h.008v.008h-.008V8.25zm.158 0a.225.225 0 01.225-.225h.008a.225.225 0 01.225.225v.008a.225.225 0 01-.225.225h-.008a.225.225 0 01-.225-.225V8.25z" />
-    </svg>
-);
+const getDomainFromEmail = (email: string | null | undefined) => {
+    if (!email) return 'general';
+    const parts = email.split('@');
+    return parts.length === 2 ? parts[1].toLowerCase() : 'general';
+};
 
-const XCircleIcon: React.FC<{className?: string}> = ({className = "w-5 h-5"}) => (
-    <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" strokeWidth={1.5} stroke="currentColor" className={className}>
-        <path strokeLinecap="round" strokeLinejoin="round" d="M9.75 9.75l4.5 4.5m0-4.5l-4.5 4.5M21 12a9 9 0 11-18 0 9 9 0 0118 0z" />
-    </svg>
-);
-
-const CreatePostModalContent: React.FC<CreatePostModalContentProps> = ({ onSubmit, onClose, currentUserId }) => {
+const CreatePost: React.FC<CreatePost> = ({ onClose }) => {
   const [title, setTitle] = useState('');
   const [content, setContent] = useState('');
   const [imagePreview, setImagePreview] = useState<string | null>(null);
@@ -56,25 +53,49 @@ const CreatePostModalContent: React.FC<CreatePostModalContentProps> = ({ onSubmi
       alert("Please provide a title and content for your post.");
       return;
     }
+    
+    // 2. Validate User is Logged In
+    const user = auth.currentUser;
+    if (!user) {
+        alert("You must be logged in to post.");
+        return;
+    }
+
     setIsLoading(true);
     let uploadedImageUrl: string | undefined = undefined;
 
     try {
+      // 3. Image Upload Logic
       if (imageBase64) {
-        if (!currentUserId) {
-          throw new Error("User not authenticated for image upload.");
-        }
-        
         const imageName = `${Date.now()}_post_image`;
-        const imageRef = ref(storage, `post_images/${currentUserId}/${imageName}`);
+        const imageRef = ref(storage, `post_images/${user.uid}/${imageName}`);
         await uploadString(imageRef, imageBase64, 'data_url');
         uploadedImageUrl = await getDownloadURL(imageRef);
       }
       
-      await onSubmit(title, content, uploadedImageUrl); 
+      // 4. EXTRACT COLLEGE DOMAIN
+      const collegeDomain = getDomainFromEmail(user.email);
+
+      // 5. SAVE TO FIRESTORE
+      await addDoc(collection(db, "posts"), {
+          title: title.trim(),
+          content: content.trim(),
+          imageUrl: uploadedImageUrl || null,
+          collegeDomain: collegeDomain,
+          authorId: user.uid,
+          authorName: user.displayName || "Anonymous Student", 
+          authorEmail: user.email,
+          isAnonymous: false,
+          upvotes: 0,
+          commentCount: 0,
+          timestamp: serverTimestamp()
+      });
+
+      // 6. Close Modal on Success
+      onClose();
 
     } catch (error) {
-      console.error("Error in CreatePostModalContent handleSubmit: ", error);
+      console.error("Error creating post: ", error);
       alert("Failed to create post. Please try again.");
     } finally {
       setIsLoading(false); 
@@ -114,7 +135,7 @@ const CreatePostModalContent: React.FC<CreatePostModalContentProps> = ({ onSubmi
 
       <div className="mb-6">
         <label htmlFor="postImage" className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1 flex items-center gap-2">
-          <PhotoIcon className="w-4 h-4" /> Add Image (Optional, max 2MB)
+          <Photo className="w-4 h-4" /> Add Image (Optional, max 2MB)
         </label>
         <input
           type="file"
@@ -139,7 +160,7 @@ const CreatePostModalContent: React.FC<CreatePostModalContentProps> = ({ onSubmi
                 className="absolute -top-2 -right-2 bg-red-500 text-white rounded-full p-1 hover:bg-red-600 shadow-md transition-colors"
                 aria-label="Remove image"
             >
-                <XCircleIcon className="w-5 h-5"/>
+                <XCircle className="w-5 h-5"/>
             </button>
           </div>
         )}
@@ -172,4 +193,4 @@ const CreatePostModalContent: React.FC<CreatePostModalContentProps> = ({ onSubmi
   );
 };
 
-export default CreatePostModalContent;
+export default CreatePost;

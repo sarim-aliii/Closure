@@ -9,33 +9,34 @@ import {
 } from './types';
 
 // 2. Auth Components
-import LoginScreen from './components/auth/Login';
-import SignupScreen from './components/auth/Signup';
-import ChangePasswordModalContent from './components/auth/ChangePassword';
-import ForgotPasswordModalContent from './components/auth/ForgotPassword';
+import Login from './components/auth/Login';
+import Signup from './components/auth/Signup';
+import ChangePassword from './components/auth/ChangePassword';
+import ForgotPassword from './components/auth/ForgotPassword';
 
 // 3. Feature Components
-import HomeScreen from './components/features/Home';
-import StoreScreen from './components/features/Store'; 
-import CommunityScreen from './components/features/Community';
-import ProfileScreen from './components/features/Profile';
-import SettingsScreen from './components/features/Settings';
-import CartScreen from './components/features/Cart';
-import ChatDetailScreen from './components/features/ChatDetail';
-import PostDetailScreen from './components/features/PostDetail'; 
-import PaymentDetailsScreen from './components/features/PaymentDetails'; 
-import UPIPaymentScreen from './components/features/UPIPayment'; 
-import CreatePostModalContent from './components/features/CreatePost';
-import TestimonialScreen from './components/features/Testimonial';
-import PrivacyPolicyScreen from './components/features/PrivacyPolicy';
-import HelpSupportScreen from './components/features/HelpSupport';
-import OfflineDownloadsScreen from './components/features/OfflineDownloads';
-import FreeMaterialScreen from './components/features/FreeMaterial';
-import NotificationSettingsModalContent from './components/features/NotificationSettings';
-import AcknowledgementsModalContent from './components/features/Acknowledgements';
-import OrderSuccessModalContent from './components/features/OrderSuccess'; 
-import ViewFreeMaterialContentModal from './components/features/ViewFreeMaterial';
-import AddProductModalContent from './components/features/AddProduct'; 
+import Home from './components/features/Home';
+import Store from './components/features/Store'; 
+import Community from './components/features/Community';
+import Profile from './components/features/Profile';
+import Settings from './components/features/Settings';
+import Cart from './components/features/Cart';
+import Chats from './components/features/Chats';
+import ChatDetail from './components/features/ChatDetail';
+import PostDetail from './components/features/PostDetail'; 
+import PaymentDetails from './components/features/PaymentDetails'; 
+import UPIPayment from './components/features/UPIPayment'; 
+import CreatePost from './components/features/CreatePost';
+import Testimonial from './components/features/Testimonial';
+import PrivacyPolicy from './components/features/PrivacyPolicy';
+import HelpSupport from './components/features/HelpSupport';
+import OfflineDownloads from './components/features/OfflineDownloads';
+import FreeMaterial from './components/features/FreeMaterial';
+import NotificationSettings from './components/features/NotificationSettings';
+import Acknowledgements from './components/features/Acknowledgements';
+import OrderSuccess from './components/features/OrderSuccess'; 
+import ViewFreeMaterialContent from './components/features/ViewFreeMaterial';
+import AddProduct from './components/features/AddProduct'; 
 
 // 4. Layout Components
 import TopBar from './components/layout/TopBar';
@@ -43,7 +44,7 @@ import BottomNav from './components/layout/BottomNav';
 import Sidebar from './components/layout/Sidebar';
 import Modal from './components/layout/Modal';
 import Popup from './components/layout/Popup';
-import TermsAndConditionsModalContent from './components/layout/TermsAndConditions';
+import TermsAndConditions from './components/layout/TermsAndConditions';
 
 // 5. Firebase Imports
 import { auth, db, storage } from './firebase';
@@ -625,16 +626,15 @@ const App: React.FC = () => {
   const renderModalContent = () => {
     switch (currentModal) {
       case ModalType.CREATE_POST:
-        return <CreatePostModalContent onSubmit={handleCreatePost} onClose={handleCloseModal} currentUserId={firebaseUser?.uid} />;
+        return <CreatePost onSubmit={handleCreatePost} onClose={handleCloseModal} currentUserId={firebaseUser?.uid} />;
       case ModalType.ADD_PRODUCT:
-         return <AddProductModalContent onSubmit={handleAddNewProduct} onClose={handleCloseModal} />;
-         return <div className="p-4 text-center">Add Product Component Missing in Imports</div>
+         return <AddProduct onSubmit={handleAddNewProduct} onClose={handleCloseModal} />;
       case ModalType.TESTIMONIALS:
-        return <TestimonialScreen testimonials={testimonialsData} />;
+        return <Testimonial testimonials={testimonialsData} />;
       case ModalType.PRIVACY_POLICY:
-        return <PrivacyPolicyScreen />;
+        return <PrivacyPolicy />;
       case ModalType.HELP_SUPPORT:
-        return <HelpSupportScreen onStartSupportChat={() => {
+        return <HelpSupport onStartSupportChat={() => {
             handleCloseModal();
             const supportChat = chatConversations.find(c => c.participants.some(p => p.id === 'closure_admin'));
             if (supportChat) {
@@ -653,7 +653,7 @@ const App: React.FC = () => {
             }
         }} />;
       case ModalType.OFFLINE_DOWNLOADS_LIST:
-        return <OfflineDownloadsScreen items={downloadableContent} user={currentUser} onDownload={(item) => {
+        return <OfflineDownloads items={downloadableContent} user={currentUser} onDownload={(item) => {
             if (!firebaseUser) { addPopupMessage("Login to download.", "error"); return; }
             const userDocRef = doc(db, "users", firebaseUser.uid);
             updateDoc(userDocRef, { downloadedItemIds: arrayUnion(item.id) })
@@ -666,25 +666,25 @@ const App: React.FC = () => {
           onViewDownloaded={() => {}} 
         />;
       case ModalType.FREE_MATERIAL_LIST:
-        return <FreeMaterialScreen materials={freeMaterials} onOpenModal={handleOpenModal} />;
+        return <FreeMaterial materials={freeMaterials} onOpenModal={handleOpenModal} />;
       case ModalType.VIEW_FREE_MATERIAL_CONTENT:
-        return <ViewFreeMaterialContentModal title={activeModalData?.title} content={activeModalData?.content} />;
+        return <ViewFreeMaterialContent title={activeModalData?.title} content={activeModalData?.content} />;
       case ModalType.ANNOUNCEMENT_DETAIL:
         return <div className="p-1"><h4 className="text-md font-semibold text-gray-800 dark:text-gray-100 mb-2">{activeModalData?.title}</h4><p className="text-xs text-gray-500 dark:text-gray-400 mb-2">{activeModalData?.date}</p><p className="text-sm text-gray-700 dark:text-gray-300 whitespace-pre-wrap">{activeModalData?.fullContent || activeModalData?.content}</p></div>;
       case ModalType.EVENT_DETAIL:
         return <div className="p-1"><h4 className="text-md font-semibold text-gray-800 dark:text-gray-100 mb-2">{activeModalData?.title}</h4><p className="text-xs text-gray-500 dark:text-gray-400 mb-1">Date: {activeModalData?.date} at {activeModalData?.time}</p><p className="text-xs text-gray-500 dark:text-gray-400 mb-2">Location: {activeModalData?.location}</p><p className="text-sm text-gray-700 dark:text-gray-300 whitespace-pre-wrap">{activeModalData?.fullDescription || activeModalData?.description}</p></div>;
       case ModalType.NOTIFICATION_SETTINGS:
-        return <NotificationSettingsModalContent preferences={notificationPreferences} onUpdatePreferences={handleUpdateNotificationPreferences} />;
+        return <NotificationSettings preferences={notificationPreferences} onUpdatePreferences={handleUpdateNotificationPreferences} />;
       case ModalType.CHANGE_PASSWORD:
-        return <ChangePasswordModalContent onChangePassword={handleChangePasswordAttempt} onClose={handleCloseModal} />;
+        return <ChangePassword onChangePassword={handleChangePasswordAttempt} onClose={handleCloseModal} />;
       case ModalType.TERMS_AND_CONDITIONS:
-        return <TermsAndConditionsModalContent />;
+        return <TermsAndConditions onClose={handleCloseModal}/>;
       case ModalType.ACKNOWLEDGEMENTS:
-        return <AcknowledgementsModalContent />;
+        return <Acknowledgements onClose={handleCloseModal}/>;
       case ModalType.FORGOT_PASSWORD:
-        return <ForgotPasswordModalContent onClose={handleCloseModal} onForgotPasswordRequest={handleForgotPasswordRequest} />;
+        return <ForgotPassword onClose={handleCloseModal} onForgotPasswordRequest={handleForgotPasswordRequest} />;
       case ModalType.ORDER_SUCCESS_MODAL:
-        return <OrderSuccessModalContent 
+        return <OrderSuccess 
                     order={activeModalData?.order} 
                     onViewOrders={() => { setActiveTab(MainAppTab.PROFILE); setCurrentView(AppView.MAIN);}} 
                     onContinueShopping={() => { setActiveTab(MainAppTab.STORE); setCurrentView(AppView.MAIN);}}
@@ -731,18 +731,19 @@ const App: React.FC = () => {
     }
     switch (currentView) {
       case AppView.LOGIN:
-        return <LoginScreen onLoginAttempt={handleLoginAttempt} onNavigateToSignup={navigateToSignup} onOpenModal={handleOpenModal} successMessage={signupSuccessMessage} errorMessage={error} />;
+        return <Login onLoginAttempt={handleLoginAttempt} onNavigateToSignup={navigateToSignup} onOpenModal={handleOpenModal} successMessage={signupSuccessMessage} errorMessage={error} />;
       case AppView.SIGNUP:
-        return <SignupScreen onSignupAttempt={handleSignupAttempt} onNavigateToLogin={navigateToLogin} errorMessage={error} />;
+        return <Signup onSignupAttempt={handleSignupAttempt} onNavigateToLogin={navigateToLogin} errorMessage={error} />;
       case AppView.SETTINGS:
-        return <SettingsScreen version={appVersion} onLogout={handleLogout} onOpenModal={handleOpenModal} currentTheme={theme} onSetTheme={setTheme} onBack={handleBackToMain} addPopupMessage={addPopupMessage} />;
+        return <Settings version={appVersion} onLogout={handleLogout} onOpenModal={handleOpenModal} currentTheme={theme} onSetTheme={setTheme} onBack={handleBackToMain} addPopupMessage={addPopupMessage} />;
       case AppView.CART:
-        return <CartScreen cartItems={cartItems} onRemoveItem={handleRemoveFromCart} onUpdateQuantity={handleUpdateCartQuantity} onNavigate={onNavigate} onBack={handleBackToMain} />;
+        return <Cart cartItems={cartItems} onRemoveItem={handleRemoveFromCart} onUpdateQuantity={handleUpdateCartQuantity} onNavigate={onNavigate} onBack={handleBackToMain} />;
       case AppView.CHAT_DETAIL:
         const selectedConversation = chatConversations.find(c => c.id === activeModalData?.conversationId);
-        return <ChatDetailScreen 
+        return <ChatDetail
                     conversationId={activeModalData?.conversationId} 
                     initialConversation={selectedConversation} 
+                    currentUser={currentUser!}
                     onBack={handleBackToMain} 
                     onSendMessage={(chatId, message) => {
                         setChatConversations(prev => prev.map(conv => {
@@ -766,7 +767,7 @@ const App: React.FC = () => {
                 />;
        case AppView.POST_DETAIL:
         const selectedPost = posts.find(p => p.id === activeModalData?.postId);
-        return <PostDetailScreen 
+        return <PostDetail
                     post={selectedPost} 
                     currentUser={currentUser} 
                     onBack={handleBackToMain} 
@@ -775,7 +776,7 @@ const App: React.FC = () => {
                     likedCommentIds={likedCommentIds} 
                 />;
       case AppView.PAYMENT_DETAILS:
-        return <PaymentDetailsScreen currentUser={currentUser} cartItems={cartItems} onNavigate={onNavigate} onBack={() => setCurrentView(AppView.CART)} onUpdateUserProfile={handleUpdateProfile}/>;
+        return <PaymentDetails currentUser={currentUser} cartItems={cartItems} onNavigate={onNavigate} onBack={() => setCurrentView(AppView.CART)} onUpdateUserProfile={handleUpdateProfile}/>;
       case AppView.UPI_PAYMENT:
         if (!activeModalData || typeof activeModalData.totalAmount !== 'number' || isNaN(activeModalData.totalAmount)) {
           console.error("Invalid data for UPI Payment screen:", activeModalData);
@@ -783,7 +784,7 @@ const App: React.FC = () => {
           setCurrentView(AppView.CART); 
           return null; 
         }
-        return <UPIPaymentScreen 
+        return <UPIPayment
                 deliveryAddress={activeModalData.deliveryAddress} 
                 paymentMethod={activeModalData.paymentMethod} 
                 totalAmount={activeModalData.totalAmount}
@@ -792,7 +793,7 @@ const App: React.FC = () => {
                />;
       case AppView.MAIN:
       default:
-        if (!currentUser) return <LoginScreen onLoginAttempt={handleLoginAttempt} onNavigateToSignup={navigateToSignup} onOpenModal={handleOpenModal} errorMessage={error} />;
+        if (!currentUser) return <Login onLoginAttempt={handleLoginAttempt} onNavigateToSignup={navigateToSignup} onOpenModal={handleOpenModal} errorMessage={error} />;
         return (
           <div className="h-screen w-screen flex flex-col">
             <TopBar 
@@ -815,10 +816,11 @@ const App: React.FC = () => {
               onSwitchToProfileTab={() => setActiveTab(MainAppTab.PROFILE)}
             />
             <main className="flex-grow overflow-y-auto">
-              {activeTab === MainAppTab.HOME && <HomeScreen onOpenModal={handleOpenModal} announcements={announcements} events={events} />}
-              {activeTab === MainAppTab.STORE && <StoreScreen products={products} onAddToCart={handleAddToCart} onOpenModal={handleOpenModal} />}
-              {activeTab === MainAppTab.COMMUNITY && <CommunityScreen posts={posts} currentUser={currentUser} onNavigateToPostDetail={handleNavigateToPostDetail} likedPostIds={likedPostIds} onToggleLike={handleToggleLikePost} />}
-              {activeTab === MainAppTab.PROFILE && <ProfileScreen user={currentUser} onLogout={handleLogout} onUpdateProfile={handleUpdateProfile}/>}
+              {activeTab === MainAppTab.HOME && <Home onOpenModal={handleOpenModal} announcements={announcements} events={events} userName={currentUser.name} />}
+              {activeTab === MainAppTab.STORE && <Store products={products} onAddToCart={handleAddToCart} onOpenModal={handleOpenModal} />}
+              {activeTab === MainAppTab.COMMUNITY && <Community posts={posts} currentUser={currentUser} onNavigateToPostDetail={handleNavigateToPostDetail} likedPostIds={likedPostIds} onToggleLike={handleToggleLikePost} onOpenModal={handleOpenModal} />}
+              {activeTab === MainAppTab.CHATS && <Chats conversations={chatConversations} onNavigate={onNavigate} />}
+              {activeTab === MainAppTab.PROFILE && <Profile user={currentUser} onLogout={handleLogout} onUpdateProfile={handleUpdateProfile}/>}
             </main>
             <BottomNav activeTab={activeTab} onTabChange={setActiveTab} />
           </div>

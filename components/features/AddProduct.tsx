@@ -1,12 +1,20 @@
-import React, { useState, ChangeEvent, FormEvent } from 'react';
-import { Product } from '../../types'; 
+import React, { useState, ChangeEvent, FormEvent, useRef } from 'react';
+import { auth, db, storage } from '../../firebase'; 
+import { ref, uploadString, getDownloadURL } from "firebase/storage";
+import { collection, addDoc, serverTimestamp } from "firebase/firestore";
 
-interface AddProductModalContentProps {
-  onSubmit: (productData: Omit<Product, 'id' | 'imageUrl'>, imageBase64?: string) => Promise<void>;
+
+interface AddProduct {
   onClose: () => void;
 }
 
-const AddProductModalContent: React.FC<AddProductModalContentProps> = ({ onSubmit, onClose }) => {
+const getDomainFromEmail = (email: string | null | undefined) => {
+    if (!email) return 'general';
+    const parts = email.split('@');
+    return parts.length === 2 ? parts[1].toLowerCase() : 'general';
+};
+
+const AddProduct: React.FC<AddProduct> = ({ onClose }) => {
   const [name, setName] = useState('');
   const [price, setPrice] = useState('');
   const [category, setCategory] = useState<'stationary' | 'book'>('stationary');
@@ -15,13 +23,14 @@ const AddProductModalContent: React.FC<AddProductModalContentProps> = ({ onSubmi
   const [imageBase64, setImageBase64] = useState<string | undefined>(undefined);
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [error, setError] = useState<string | null>(null);
+  const fileInputRef = useRef<HTMLInputElement>(null);
 
   const handleImageChange = (e: ChangeEvent<HTMLInputElement>) => {
     const file = e.target.files?.[0];
     if (file) {
-      // Basic validation for image size (e.g., max 2MB)
       if (file.size > 2 * 1024 * 1024) {
         setError("Image size must be less than 2MB");
+        if (fileInputRef.current) fileInputRef.current.value = "";
         return;
       }
 
@@ -40,25 +49,53 @@ const AddProductModalContent: React.FC<AddProductModalContentProps> = ({ onSubmi
     e.preventDefault();
     setError(null);
 
-    // Validation
+    // 1. Validation
     if (!name.trim() || !price || !imageBase64) {
       setError("Please fill in all required fields and upload an image.");
       return;
     }
 
+    const user = auth.currentUser;
+    if (!user) {
+        setError("You must be logged in to add a product.");
+        return;
+    }
+
     setIsSubmitting(true);
 
     try {
-      await onSubmit({
-        name,
+      // 2. Upload Image to Firebase Storage
+      const imageName = `${Date.now()}_product`;
+      const storageRef = ref(storage, `product_images/${user.uid}/${imageName}`);
+      
+      // Upload the Base64 string
+      await uploadString(storageRef, imageBase64, 'data_url');
+      const downloadUrl = await getDownloadURL(storageRef);
+
+      // 3. Extract College Domain (For Isolation)
+      const collegeDomain = getDomainFromEmail(user.email);
+
+      // 4. Save Product to Firestore
+      await addDoc(collection(db, "products"), {
+        name: name.trim(),
         price: parseFloat(price),
-        category,
-        description
-      }, imageBase64);
-      // The parent component handles closing the modal on success
+        category: category,
+        description: description.trim(),
+        imageUrl: downloadUrl,   
+        collegeDomain: collegeDomain,
+        sellerId: user.uid,  
+        sellerName: user.displayName || "Anonymous Student",
+        createdAt: serverTimestamp(),
+        status: "available" 
+      });
+
+      // 5. Success
+      onClose();
+
     } catch (err) {
-      console.error(err);
-      setError("Failed to add product. Please try again.");
+      console.error("Error adding product: ", err);
+      setError("Failed to add product. Please check your connection.");
+    } finally {
       setIsSubmitting(false);
     }
   };
@@ -84,6 +121,7 @@ const AddProductModalContent: React.FC<AddProductModalContentProps> = ({ onSubmi
           className="mt-1 block w-full rounded-md border-gray-300 shadow-sm focus:border-indigo-500 focus:ring-indigo-500 dark:bg-gray-700 dark:border-gray-600 dark:text-white sm:text-sm p-2 border"
           placeholder="e.g. Engineering Mathematics"
           required
+          disabled={isSubmitting}
         />
       </div>
 
@@ -102,6 +140,7 @@ const AddProductModalContent: React.FC<AddProductModalContentProps> = ({ onSubmi
             className="mt-1 block w-full rounded-md border-gray-300 shadow-sm focus:border-indigo-500 focus:ring-indigo-500 dark:bg-gray-700 dark:border-gray-600 dark:text-white sm:text-sm p-2 border"
             placeholder="0.00"
             required
+            disabled={isSubmitting}
           />
         </div>
 
@@ -114,6 +153,7 @@ const AddProductModalContent: React.FC<AddProductModalContentProps> = ({ onSubmi
             value={category}
             onChange={(e) => setCategory(e.target.value as 'stationary' | 'book')}
             className="mt-1 block w-full rounded-md border-gray-300 shadow-sm focus:border-indigo-500 focus:ring-indigo-500 dark:bg-gray-700 dark:border-gray-600 dark:text-white sm:text-sm p-2 border"
+            disabled={isSubmitting}
           >
             <option value="stationary">Stationary</option>
             <option value="book">Book</option>
@@ -132,6 +172,7 @@ const AddProductModalContent: React.FC<AddProductModalContentProps> = ({ onSubmi
           onChange={(e) => setDescription(e.target.value)}
           className="mt-1 block w-full rounded-md border-gray-300 shadow-sm focus:border-indigo-500 focus:ring-indigo-500 dark:bg-gray-700 dark:border-gray-600 dark:text-white sm:text-sm p-2 border"
           placeholder="Product details..."
+          disabled={isSubmitting}
         />
       </div>
 
@@ -154,7 +195,9 @@ const AddProductModalContent: React.FC<AddProductModalContentProps> = ({ onSubmi
                 onClick={() => {
                   setImagePreview(null);
                   setImageBase64(undefined);
+                  if (fileInputRef.current) fileInputRef.current.value = "";
                 }}
+                disabled={isSubmitting}
                 className="absolute -top-2 -right-2 bg-red-500 text-white rounded-full p-1 hover:bg-red-600"
               >
                 <svg className="w-3 h-3" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M6 18L18 6M6 6l12 12"></path></svg>
@@ -164,8 +207,10 @@ const AddProductModalContent: React.FC<AddProductModalContentProps> = ({ onSubmi
             <div className="w-full">
                 <input
                   type="file"
+                  ref={fileInputRef}
                   accept="image/*"
                   onChange={handleImageChange}
+                  disabled={isSubmitting}
                   className="block w-full text-sm text-gray-500 dark:text-gray-400
                     file:mr-4 file:py-2 file:px-4
                     file:rounded-md file:border-0
@@ -210,4 +255,4 @@ const AddProductModalContent: React.FC<AddProductModalContentProps> = ({ onSubmi
   );
 };
 
-export default AddProductModalContent;
+export default AddProduct;
