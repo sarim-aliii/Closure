@@ -1,57 +1,74 @@
-
 import React, { useState, useCallback, useEffect } from 'react';
-// Removed unused HashRouter, Routes, Route
+
 import { 
-    AppView, MainAppTab, UserProfile, ModalType,
-    Product, CartItem, Notification, Announcement, Event,
-    DownloadableItem, FreeMaterialItem, Testimonial,
-    ChatConversation, ChatMessage, PopupMessage, NotificationPreferences,
-    Post, Comment, Address, Order 
+  AppView, MainAppTab, UserProfile, ModalType,
+  Product, CartItem, Notification, Announcement, Event,
+  DownloadableItem, FreeMaterialItem, Testimonial,
+  ChatConversation, ChatMessage, PopupMessage, NotificationPreferences,
+  Post, Address, Order 
 } from './types';
-import LoginScreen from './screens/LoginScreen';
-import SignupScreen from './screens/SignupScreen';
-import HomeScreen from './screens/HomeScreen';
-import StoreScreen from './screens/StoreScreen'; 
-import CommunityScreen from './screens/CommunityScreen';
-import ProfileScreen from './screens/ProfileScreen';
-import SettingsScreen from './screens/SettingsScreen';
-import CartScreen from './screens/CartScreen';
-import ChatDetailScreen from './screens/ChatDetailScreen';
-import PostDetailScreen from './screens/PostDetailScreen'; 
-import PaymentDetailsScreen from './screens/PaymentDetailsScreen'; 
-import UPIPaymentScreen from './screens/UPIPaymentScreen'; 
 
+// 2. Auth Components
+import LoginScreen from './components/auth/Login';
+import SignupScreen from './components/auth/Signup';
+import ChangePasswordModalContent from './components/auth/ChangePassword';
+import ForgotPasswordModalContent from './components/auth/ForgotPassword';
 
-import TopBar from './components/TopBar';
-import BottomNav from './components/BottomNav';
-import Sidebar from './components/Sidebar';
-import Modal from './components/Modal';
-import Popup from './components/Popup';
+// 3. Feature Components
+import HomeScreen from './components/features/Home';
+import StoreScreen from './components/features/Store'; 
+import CommunityScreen from './components/features/Community';
+import ProfileScreen from './components/features/Profile';
+import SettingsScreen from './components/features/Settings';
+import CartScreen from './components/features/Cart';
+import ChatDetailScreen from './components/features/ChatDetail';
+import PostDetailScreen from './components/features/PostDetail'; 
+import PaymentDetailsScreen from './components/features/PaymentDetails'; 
+import UPIPaymentScreen from './components/features/UPIPayment'; 
+import CreatePostModalContent from './components/features/CreatePost';
+import TestimonialScreen from './components/features/Testimonial';
+import PrivacyPolicyScreen from './components/features/PrivacyPolicy';
+import HelpSupportScreen from './components/features/HelpSupport';
+import OfflineDownloadsScreen from './components/features/OfflineDownloads';
+import FreeMaterialScreen from './components/features/FreeMaterial';
+import NotificationSettingsModalContent from './components/features/NotificationSettings';
+import AcknowledgementsModalContent from './components/features/Acknowledgements';
+import OrderSuccessModalContent from './components/features/OrderSuccess'; 
+import ViewFreeMaterialContentModal from './components/features/ViewFreeMaterial';
+import AddProductModalContent from './components/features/AddProduct'; 
 
-import CreatePostModalContent from './components/modals/CreatePostModalContent';
-// import AddProductModalContent from './components/modals/AddProductModalContent'; // New
-import TestimonialScreen from './screens/TestimonialScreen';
-import PrivacyPolicyScreen from './screens/PrivacyPolicyScreen';
-import HelpSupportScreen from './screens/HelpSupportScreen';
-import OfflineDownloadsScreen from './screens/OfflineDownloadsScreen';
-import FreeMaterialScreen from './screens/FreeMaterialScreen';
-import NotificationSettingsModalContent from './components/modals/NotificationSettingsModalContent';
-import ChangePasswordModalContent from './components/modals/ChangePasswordModalContent';
-import TermsAndConditionsModalContent from './components/modals/TermsAndConditionsModalContent';
-import AcknowledgementsModalContent from './components/modals/AcknowledgementsModalContent';
-import OrderSuccessModalContent from './components/modals/OrderSuccessModalContent'; 
-import ForgotPasswordModalContent from './components/modals/ForgotPasswordModalContent';
-import ViewFreeMaterialContentModal from './components/modals/ViewFreeMaterialContentModal';
+// 4. Layout Components
+import TopBar from './components/layout/TopBar';
+import BottomNav from './components/layout/BottomNav';
+import Sidebar from './components/layout/Sidebar';
+import Modal from './components/layout/Modal';
+import Popup from './components/layout/Popup';
+import TermsAndConditionsModalContent from './components/layout/TermsAndConditions';
 
-// Firebase imports
-import { auth, db, storage } from './firebase'; // Added storage
-import { User as FirebaseUser, onAuthStateChanged, signOut, createUserWithEmailAndPassword, signInWithEmailAndPassword, updatePassword, sendPasswordResetEmail, reauthenticateWithCredential, EmailAuthProvider } from "firebase/auth"; 
-import { doc, setDoc, getDoc, updateDoc, collection, addDoc, query, where, getDocs, writeBatch, serverTimestamp, increment, arrayUnion, arrayRemove, Timestamp, orderBy, deleteDoc } from "firebase/firestore"; 
-
+// 5. Firebase Imports
+import { auth, db, storage } from './firebase';
+import { 
+  User as FirebaseUser, 
+  onAuthStateChanged, 
+  signOut, 
+  createUserWithEmailAndPassword, 
+  signInWithEmailAndPassword, 
+  updatePassword, 
+  sendPasswordResetEmail, 
+  reauthenticateWithCredential, 
+  EmailAuthProvider 
+} from "firebase/auth"; 
+import { 
+  doc, setDoc, getDoc, updateDoc, collection, addDoc, 
+  query, orderBy, getDocs, writeBatch, serverTimestamp, 
+  increment, arrayUnion, arrayRemove, Timestamp 
+} from "firebase/firestore"; 
+import { ref, uploadString, getDownloadURL } from "firebase/storage";
 
 export type Theme = 'light' | 'dark';
 
 const App: React.FC = () => {
+  // --- State Management ---
   const [currentView, setCurrentView] = useState<AppView>(AppView.LOGIN); 
   const [activeTab, setActiveTab] = useState<MainAppTab>(MainAppTab.HOME);
   const [isSidebarOpen, setIsSidebarOpen] = useState(false);
@@ -98,6 +115,7 @@ const App: React.FC = () => {
     promotionalUpdates: false,
   });
 
+  // --- Helper: Popup Messages ---
   const addPopupMessage = useCallback((message: string, type: PopupMessage['type']) => {
     const id = String(Date.now());
     setPopupMessages(prev => [...prev, { id, message, type }]);
@@ -106,7 +124,7 @@ const App: React.FC = () => {
     }, 3000);
   }, []);
 
-  // Fetch initial data
+  // --- Effect: Fetch Initial Data ---
   useEffect(() => {
     const fetchProducts = async () => {
         try {
@@ -116,7 +134,7 @@ const App: React.FC = () => {
                 const data = doc.data();
                 let price = parseFloat(data.price);
                 if (isNaN(price)) {
-                    console.warn(`Product with ID ${doc.id} has invalid price: ${data.price}. Defaulting to 0.`);
+                    console.warn(`Product ${doc.id} has invalid price. Defaulting to 0.`);
                     price = 0;
                 }
                 return { id: doc.id, ...data, price } as Product;
@@ -127,19 +145,26 @@ const App: React.FC = () => {
             addPopupMessage("Could not load products.", "error");
         }
     };
-    fetchProducts();
 
-     const fetchPosts = async () => {
+    const fetchPosts = async () => {
         try {
             const postsQuery = query(collection(db, "posts"), orderBy("timestamp", "desc"));
             const querySnapshot = await getDocs(postsQuery);
             const fetchedPosts: Post[] = [];
             querySnapshot.forEach((docSnap) => { 
                 const data = docSnap.data();
+                let dateStr = new Date().toISOString();
+                if (data.timestamp && (data.timestamp as Timestamp).toDate) {
+                    dateStr = (data.timestamp as Timestamp).toDate().toISOString();
+                } else if (data.timestamp instanceof Date) {
+                    dateStr = data.timestamp.toISOString();
+                }
+
                 fetchedPosts.push({ 
                     id: docSnap.id, 
                     ...data, 
-                    timestamp: (data.timestamp as Timestamp)?.toDate ? (data.timestamp as Timestamp).toDate() : new Date(data.timestamp) , 
+                    // @ts-ignore: Ensuring type compatibility if interface changed
+                    timestamp: dateStr, 
                     comments: data.comments || [] 
                 } as Post);
             });
@@ -149,30 +174,35 @@ const App: React.FC = () => {
             addPopupMessage("Could not load posts.", "error");
         }
     };
+
+    fetchProducts();
     fetchPosts();
     
+    // Mock Data
     setAnnouncements([
-      { id: 'anno1', title: 'Mid-term Exams Schedule Released', content: 'The schedule for the upcoming mid-term examinations has been released. Please check the student portal for details.', fullContent: 'The detailed schedule for the upcoming mid-term examinations, covering all departments and subjects, has been officially released. Students are advised to log in to the student portal to view their specific exam dates, times, and assigned locations. Any clashes or concerns should be reported to the academic office by [Date].', date: 'Oct 26, 2023' },
+      { id: 'anno1', title: 'Mid-term Exams Schedule Released', content: 'The schedule for the upcoming mid-term examinations has been released.', fullContent: 'Detailed content here...', date: 'Oct 26, 2023' },
     ]);
     setEvents([
-      { id: 'event1', title: 'Annual Sports Day', date: 'Nov 10, 2023', time: '09:00 AM', location: 'University Ground', description: 'Get ready for a day full of exciting sports and team spirit!', fullDescription: 'The Annual Sports Day is a highlight of our academic calendar, featuring a wide range of track and field events, team sports, and fun activities. All students and faculty are encouraged to participate or cheer for their respective houses. Refreshments will be available.'},
+      { id: 'event1', title: 'Annual Sports Day', date: 'Nov 10, 2023', time: '09:00 AM', location: 'University Ground', description: 'Sports day!', fullDescription: 'Full description...'},
     ]);
     setDownloadableContent([ { id: 'dl1', name: 'Introduction to Programming (PDF)', type: 'PDF', size: '2.5 MB', url: '#' }, ]);
     setFreeMaterials([ 
         { 
           id: 'fm1', 
           title: 'Understanding React Hooks', 
-          description: 'A comprehensive guide to React Hooks.', 
+          description: 'A comprehensive guide.', 
           type: 'article', 
-          content: 'React Hooks are functions that let you “hook into” React state and lifecycle features from function components. They were introduced in React 16.8.\n\nKey Hooks:\n- useState: For adding state to functional components.\n- useEffect: For handling side effects (like data fetching or subscriptions).\n- useContext: To consume context directly in functional components.\n\nRules of Hooks:\n1. Only Call Hooks at the Top Level: Don’t call Hooks inside loops, conditions, or nested functions.\n2. Only Call Hooks from React Functions: Call them from React function components or custom Hooks.' 
+          content: 'React Hooks content...' 
         },
     ]);
-    setTestimonialsData([ {id: 't1', studentName: 'Alice Wonderland', course: 'Computer Science', testimonialText: 'This platform has been incredibly helpful for my studies. The community is great!', avatarUrl: 'https://picsum.photos/seed/alice/100/100'}, ]);
+    setTestimonialsData([ {id: 't1', studentName: 'Alice Wonderland', course: 'Computer Science', testimonialText: 'Great platform!', avatarUrl: 'https://picsum.photos/seed/alice/100/100'}, ]);
     setChatConversations([
-        { id: 'chat1', participants: [{id: 'closure_admin', name: 'Closure Admin', avatarUrl: 'https://picsum.photos/seed/closure_avatar/40/40'}], messages: [{id: 'msg1', sender: 'closure_admin', text: 'Welcome to Closure! How can we help you today?', timestamp: new Date(Date.now() - 200000)}], unreadCount: 1, lastMessagePreview: 'Welcome to Closure! How can we help you today?', lastMessageTimestamp: new Date(Date.now() - 200000) },
+        { id: 'chat1', participants: [{id: 'closure_admin', name: 'Closure Admin', avatarUrl: 'https://picsum.photos/seed/closure_avatar/40/40'}], messages: [{id: 'msg1', senderId: 'closure_admin', text: 'Welcome to Closure! How can we help?', timestamp: new Date(Date.now() - 200000).toISOString()}], unreadCount: 1, lastMessagePreview: 'Welcome to Closure!', lastMessageTimestamp: new Date(Date.now() - 200000) },
     ]);
   }, [addPopupMessage]);
 
+
+  // --- Auth Handlers ---
   const handleLogout = useCallback(async () => {
     try {
       await signOut(auth);
@@ -189,7 +219,7 @@ const App: React.FC = () => {
       console.error("Logout Error:", error);
       addPopupMessage("Failed to logout.", "error");
     }
-  }, [addPopupMessage]); // Removed setters as they don't change identity
+  }, [addPopupMessage]);
 
 
   useEffect(() => {
@@ -205,18 +235,24 @@ const App: React.FC = () => {
                 ...userData,
                 orders: userData.orders || [], 
               });
-              setNotificationPreferences(userData.notificationPreferences || { 
-                newAnnouncements: true, chatMentions: true, eventReminders: true, promotionalUpdates: false
-              });
+              
+              if(userData.notificationPreferences) {
+                  setNotificationPreferences(userData.notificationPreferences);
+              }
+
               const notificationsQuery = query(collection(db, "users", user.uid, "notifications"), orderBy("timestamp", "desc")); 
               const notificationsSnapshot = await getDocs(notificationsQuery);
-              setNotifications(notificationsSnapshot.docs.map(d => ({id: d.id, ...d.data(), timestamp: (d.data().timestamp as Timestamp).toDate() } as Notification)));
+              setNotifications(notificationsSnapshot.docs.map(d => ({
+                  id: d.id, 
+                  ...d.data(), 
+                  timestamp: (d.data().timestamp as Timestamp).toDate() 
+              } as Notification)));
 
               setLikedPostIds(new Set(userData.likedPostIds || [])); 
               setLikedCommentIds(new Set(userData.likedCommentIds || []));
 
             } else {
-              console.error("User profile not found in Firestore for UID:", user.uid);
+              console.error("User profile not found in Firestore");
               handleLogout();
             }
         } catch (e) {
@@ -253,7 +289,9 @@ const App: React.FC = () => {
     try {
       const userCredential = await createUserWithEmailAndPassword(auth, email, passwordPlain);
       const fUser = userCredential.user;
+      
       const newUserProfile: UserProfile = {
+        id: fUser.uid,
         name,
         email: fUser.email || email, 
         mobileNumber: "", 
@@ -265,6 +303,7 @@ const App: React.FC = () => {
         likedCommentIds: [], 
         notificationPreferences: { newAnnouncements: true, chatMentions: true, eventReminders: true, promotionalUpdates: false },
       };
+      
       await setDoc(doc(db, "users", fUser.uid), newUserProfile);
       
       setSignupSuccessMessage("Signup successful! Please login.");
@@ -272,16 +311,12 @@ const App: React.FC = () => {
       return true;
     } catch (error: any) {
       console.error("Firebase Signup Error:", error);
-      if (error.code === 'auth/email-already-in-use') {
-        setError('This email address is already in use.');
-      } else if (error.code === 'auth/weak-password') {
-        setError('The password is too weak. Please use at least 6 characters.');
-      } else {
-        setError(error.message || 'Failed to sign up. Please try again.');
-      }
+      if (error.code === 'auth/email-already-in-use') setError('This email address is already in use.');
+      else if (error.code === 'auth/weak-password') setError('Password should be at least 6 characters.');
+      else setError(error.message || 'Failed to sign up.');
       return false;
     }
-  }, []); // Removed setters
+  }, []);
 
   const handleLoginAttempt = useCallback(async (emailToLogin: string, passwordToLogin: string): Promise<boolean> => {
     setError(null); setSignupSuccessMessage(null);
@@ -293,13 +328,14 @@ const App: React.FC = () => {
       if (error.code === 'auth/user-not-found' || error.code === 'auth/wrong-password' || error.code === 'auth/invalid-credential') {
         setError('Invalid email or password.');
       } else {
-        setError(error.message || 'Failed to login. Please try again.');
+        setError(error.message || 'Failed to login.');
       }
       return false;
     }
-  }, []); // Removed setters
+  }, []);
 
 
+  // --- Navigation & Modal Handlers ---
   const handleOpenModal = useCallback((modalType: ModalType, data?: any) => {
     setCurrentModal(modalType);
     setActiveModalData(data);
@@ -310,27 +346,25 @@ const App: React.FC = () => {
     setActiveModalData(null);
   }, []);
 
-  const handleNavigateToSettings = useCallback(() => {
-    setCurrentView(AppView.SETTINGS);
-  }, []);
-
-  const handleNavigateToCart = useCallback(() => {
-    setCurrentView(AppView.CART);
-  }, []);
-
+  const handleNavigateToSettings = useCallback(() => setCurrentView(AppView.SETTINGS), []);
+  const handleNavigateToCart = useCallback(() => setCurrentView(AppView.CART), []);
   const handleNavigateToChatDetail = useCallback((conversationId: string) => {
     setCurrentView(AppView.CHAT_DETAIL);
     setActiveModalData({ conversationId }); 
   }, []);
-
    const handleNavigateToPostDetail = useCallback((postId: string) => {
     setCurrentView(AppView.POST_DETAIL);
     setActiveModalData({ postId }); 
   }, []);
+  const handleBackToMain = useCallback(() => setCurrentView(AppView.MAIN), []);
 
-  const handleBackToMain = useCallback(() => {
-    setCurrentView(AppView.MAIN);
-  }, []);
+  const onNavigate = (view: AppView, data?: any) => {
+    setCurrentView(view);
+    if (data !== undefined) setActiveModalData(data);
+    else setActiveModalData(null); 
+  };
+
+  // --- Feature Logic ---
 
   const handleAddToCart = useCallback((product: Product) => {
     setCartItems(prevItems => {
@@ -387,7 +421,8 @@ const App: React.FC = () => {
       const newPostForState: Post = {
         ...newPostData,
         id: docRef.id,
-        timestamp: new Date(), 
+        // @ts-ignore
+        timestamp: new Date().toISOString(), 
         comments: [],
       } as Post;
 
@@ -400,22 +435,24 @@ const App: React.FC = () => {
     }
   }, [firebaseUser, currentUser, addPopupMessage, handleCloseModal]);
 
+
   const handleAddNewProduct = useCallback(async (productData: Omit<Product, 'id' | 'imageUrl'>, imageBase64?: string) => {
     if (!firebaseUser) { 
-        addPopupMessage("You are not authorized to add products.", "error");
+        addPopupMessage("Unauthorized.", "error");
         return;
     }
     let uploadedImageUrl: string | undefined = undefined;
     try {
         if (imageBase64) {
             const imageName = `${Date.now()}_product_image`;
-            const imageStorageRef = storage.ref(`product_images/${imageName}`);
-            await imageStorageRef.putString(imageBase64, 'data_url');
-            uploadedImageUrl = await imageStorageRef.getDownloadURL();
+            // v9 Syntax
+            const imageRef = ref(storage, `product_images/${imageName}`);
+            await uploadString(imageRef, imageBase64, 'data_url');
+            uploadedImageUrl = await getDownloadURL(imageRef);
         }
 
         if (!uploadedImageUrl) {
-            addPopupMessage("Product image is required and failed to upload.", "error");
+            addPopupMessage("Product image required.", "error");
             return;
         }
 
@@ -426,7 +463,7 @@ const App: React.FC = () => {
 
         const docRef = await addDoc(collection(db, "products"), newProduct);
         setProducts(prevProducts => [{ ...newProduct, id: docRef.id }, ...prevProducts]);
-        addPopupMessage("Product added successfully!", "success");
+        addPopupMessage("Product added!", "success");
         handleCloseModal();
     } catch (error) {
         console.error("Error adding product: ", error);
@@ -436,17 +473,13 @@ const App: React.FC = () => {
 
 
   const handleUpdateProfile = useCallback(async (updatedData: Partial<UserProfile>) => {
-    if (!firebaseUser) {
-      addPopupMessage("Not logged in.", "error");
-      return;
-    }
+    if (!firebaseUser) return;
     try {
       const userDocRef = doc(db, "users", firebaseUser.uid);
       await updateDoc(userDocRef, updatedData);
       setCurrentUser(prev => prev ? { ...prev, ...updatedData } : null);
-      addPopupMessage("Profile updated successfully!", "success");
+      addPopupMessage("Profile updated!", "success");
     } catch (error) {
-      console.error("Error updating profile: ", error);
       addPopupMessage("Failed to update profile.", "error");
     }
   }, [firebaseUser, addPopupMessage]);
@@ -458,32 +491,22 @@ const App: React.FC = () => {
         await updateDoc(userDocRef, { notificationPreferences: updatedPrefs });
         setNotificationPreferences(prev => ({ ...prev, ...updatedPrefs }));
     } catch (error) {
-        console.error("Error updating notification preferences:", error);
-        addPopupMessage("Failed to save notification settings.", "error");
+        addPopupMessage("Failed to save settings.", "error");
     }
   }, [firebaseUser, addPopupMessage]);
 
  const handleChangePasswordAttempt = useCallback(async (oldPasswordPlain: string, newPasswordPlain: string): Promise<boolean> => {
-    if (!firebaseUser || !firebaseUser.email) {
-      addPopupMessage("User not found or email missing.", "error");
-      return false;
-    }
+    if (!firebaseUser || !firebaseUser.email) return false;
     try {
       const credential = EmailAuthProvider.credential(firebaseUser.email, oldPasswordPlain);
       await reauthenticateWithCredential(firebaseUser, credential);
       await updatePassword(firebaseUser, newPasswordPlain);
-      addPopupMessage("Password updated successfully!", "success");
+      addPopupMessage("Password updated!", "success");
       handleCloseModal();
       return true;
     } catch (error: any) {
-      console.error("Error changing password:", error);
-      if (error.code === 'auth/wrong-password' || error.code === 'auth/invalid-credential') {
-        addPopupMessage("Incorrect current password.", "error");
-      } else if (error.code === 'auth/too-many-requests') {
-        addPopupMessage("Too many attempts. Please try again later.", "error");
-      } else {
-        addPopupMessage("Failed to change password. Please try again.", "error");
-      }
+      console.error("Change Password Error:", error);
+      addPopupMessage("Failed to change password. Check credentials.", "error");
       return false;
     }
   }, [firebaseUser, addPopupMessage, handleCloseModal]);
@@ -491,17 +514,10 @@ const App: React.FC = () => {
   const handleForgotPasswordRequest = useCallback(async (emailForReset: string): Promise<boolean> => {
     try {
       await sendPasswordResetEmail(auth, emailForReset);
-      addPopupMessage(`Password reset email sent to ${emailForReset}.`, 'success');
+      addPopupMessage(`Reset email sent to ${emailForReset}.`, 'success');
       return true;
-    } catch (error: any) {
-      console.error("Forgot password error:", error);
-      if (error.code === 'auth/user-not-found') {
-        addPopupMessage('No user found with this email address.', 'error');
-      } else if (error.code === 'auth/invalid-email') {
-        addPopupMessage('Please enter a valid email address.', 'error');
-      } else {
-        addPopupMessage('Failed to send password reset email.', 'error');
-      }
+    } catch (error) {
+      addPopupMessage('Failed to send reset email.', 'error');
       return false;
     }
   }, [addPopupMessage]);
@@ -514,7 +530,7 @@ const App: React.FC = () => {
         await updateDoc(notifRef, { read: true });
         setNotifications(prev => prev.map(n => n.id === notificationId ? {...n, read: true} : n));
     } catch (error) {
-        console.error("Error marking notification read:", error);
+        console.error("Error marking read:", error);
     }
   }, [firebaseUser]);
 
@@ -531,7 +547,6 @@ const App: React.FC = () => {
         await batch.commit();
         setNotifications(prev => prev.map(n => ({...n, read: true})));
     } catch (error) {
-        console.error("Error marking all notifications read:", error);
         addPopupMessage("Failed to mark all as read.", "error");
     }
   }, [firebaseUser, notifications, addPopupMessage]);
@@ -563,7 +578,6 @@ const App: React.FC = () => {
             p.id === postId ? { ...p, upvotes: p.upvotes + (hasLiked ? -1 : 1) } : p
         ));
     } catch (error) {
-        console.error("Error toggling like:", error);
         addPopupMessage("Failed to update like status.", "error");
     }
   }, [firebaseUser, likedPostIds, addPopupMessage]);
@@ -571,9 +585,7 @@ const App: React.FC = () => {
 
   const handleConfirmOrderPayment = useCallback(async (deliveryAddress: Address, method: string) => {
     if (!firebaseUser || !currentUser || cartItems.length === 0) {
-        addPopupMessage("Error processing order. User or cart invalid.", "error");
-        setCurrentView(AppView.MAIN); 
-        setActiveTab(MainAppTab.STORE);
+        addPopupMessage("Error processing order.", "error");
         return;
     }
     const totalAmount = cartItems.reduce((sum, item) => sum + item.price * item.quantity, 0);
@@ -605,20 +617,9 @@ const App: React.FC = () => {
         setActiveTab(MainAppTab.STORE); 
     } catch (e) {
         console.error("Error placing order: ", e);
-        addPopupMessage("Failed to place order. Please try again.", "error");
-        setCurrentView(AppView.MAIN);
-        setActiveTab(MainAppTab.STORE);
+        addPopupMessage("Failed to place order.", "error");
     }
-  }, [firebaseUser, currentUser, cartItems, addPopupMessage, handleOpenModal]); // Removed setters
-
-  const onNavigate = (view: AppView, data?: any) => {
-    setCurrentView(view);
-    if (data !== undefined) { 
-      setActiveModalData(data);
-    } else {
-      setActiveModalData(null); 
-    }
-  };
+  }, [firebaseUser, currentUser, cartItems, addPopupMessage, handleOpenModal]);
 
 
   const renderModalContent = () => {
@@ -626,7 +627,8 @@ const App: React.FC = () => {
       case ModalType.CREATE_POST:
         return <CreatePostModalContent onSubmit={handleCreatePost} onClose={handleCloseModal} currentUserId={firebaseUser?.uid} />;
       case ModalType.ADD_PRODUCT:
-        return <AddProductModalContent onSubmit={handleAddNewProduct} onClose={handleCloseModal} />;
+         return <AddProductModalContent onSubmit={handleAddNewProduct} onClose={handleCloseModal} />;
+         return <div className="p-4 text-center">Add Product Component Missing in Imports</div>
       case ModalType.TESTIMONIALS:
         return <TestimonialScreen testimonials={testimonialsData} />;
       case ModalType.PRIVACY_POLICY:
@@ -657,7 +659,7 @@ const App: React.FC = () => {
             updateDoc(userDocRef, { downloadedItemIds: arrayUnion(item.id) })
               .then(() => {
                 setCurrentUser(prev => prev ? {...prev, downloadedItemIds: [...(prev.downloadedItemIds || []), item.id]} : null);
-                addPopupMessage(`${item.name} downloaded! (Simulated)`, 'success');
+                addPopupMessage(`${item.name} downloaded!`, 'success');
               })
               .catch(e => { console.error(e); addPopupMessage("Download failed.", "error"); });
           }} 
@@ -747,7 +749,13 @@ const App: React.FC = () => {
                             if (conv.id === chatId) {
                                 return {
                                     ...conv,
-                                    messages: [...conv.messages, { ...message, id: String(Date.now()), timestamp: new Date() } as ChatMessage],
+                                    messages: [...conv.messages, { 
+                                        ...message, 
+                                        id: String(Date.now()), 
+                                        senderId: firebaseUser?.uid || 'user',
+                                        // @ts-ignore
+                                        timestamp: new Date().toISOString() 
+                                    } as ChatMessage],
                                     lastMessagePreview: message.text || (message.imageUrl ? 'Image' : 'New message'),
                                     lastMessageTimestamp: new Date(),
                                 };
@@ -771,8 +779,8 @@ const App: React.FC = () => {
       case AppView.UPI_PAYMENT:
         if (!activeModalData || typeof activeModalData.totalAmount !== 'number' || isNaN(activeModalData.totalAmount)) {
           console.error("Invalid data for UPI Payment screen:", activeModalData);
-          addPopupMessage("Error: Payment details are incomplete. Please try again.", "error");
-          setCurrentView(AppView.CART); // Navigate back to cart or payment details
+          addPopupMessage("Error: Payment details incomplete.", "error");
+          setCurrentView(AppView.CART); 
           return null; 
         }
         return <UPIPaymentScreen 
@@ -790,6 +798,7 @@ const App: React.FC = () => {
             <TopBar 
               title="Closure" 
               userName={currentUser.name} 
+              showMenuButton={true}
               onMenuClick={() => setIsSidebarOpen(true)}
               notifications={notifications}
               onNotificationClick={handleMarkNotificationRead}
