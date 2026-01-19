@@ -1,38 +1,33 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useMemo } from 'react';
 import { ModalType, HomeProps, Post, AppView } from '../../types';
-import { auth, db } from '../../firebase'; 
+import { db } from '../../firebase'; 
 import { collection, query, where, orderBy, onSnapshot, doc, updateDoc, increment } from 'firebase/firestore';
-import Calendar from '../icons/Calendar'
-import Location from '../icons/Location'
-import ChatBubble from '../icons/ChatBubble'
-import ArrowUp from '../icons/ArrowUp'
-import ArrowDown from '../icons/ArrowDown'
+import Calendar from '../icons/Calendar';
+import Location from '../icons/Location';
+import ChatBubble from '../icons/ChatBubble';
+import ArrowUp from '../icons/ArrowUp';
+import ArrowDown from '../icons/ArrowDown';
+import { useUser } from '../../contexts/UserContext'; // Integrated Context
 
-
-
-const getUserDomain = () => {
-    const user = auth.currentUser;
-    if (!user || !user.email) return null;
-    return user.email.split('@')[1].toLowerCase();
-};
-
-interface ExtendedHome extends HomeProps {
-    onNavigate?: (view: AppView, data?: any) => void;
+interface ExtendedHomeProps extends HomeProps {
+  onNavigate?: (view: AppView, data?: any) => void;
 }
 
-const Home: React.FC<ExtendedHome> = ({ onOpenModal, announcements, events, onNavigate }) => {
+const Home: React.FC<ExtendedHomeProps> = ({ onOpenModal, announcements, events, onNavigate }) => {
+  const { user } = useUser(); // Access global user state
   const [posts, setPosts] = useState<Post[]>([]);
   const [loading, setLoading] = useState(true);
-  const [userDomain, setUserDomain] = useState<string | null>(null);
+
+  // Derive domain from user context
+  const userDomain = useMemo(() => {
+    return user?.email ? user.email.split('@')[1].toLowerCase() : null;
+  }, [user]);
 
   useEffect(() => {
-    const domain = getUserDomain();
-    setUserDomain(domain);
-
-    if (domain) {
+    if (userDomain) {
         const q = query(
             collection(db, "posts"), 
-            where("collegeDomain", "==", domain),
+            where("collegeDomain", "==", userDomain), // Filter by college
             orderBy("timestamp", "desc")
         );
 
@@ -52,7 +47,7 @@ const Home: React.FC<ExtendedHome> = ({ onOpenModal, announcements, events, onNa
     } else {
         setLoading(false);
     }
-  }, []);
+  }, [userDomain]);
 
   const handleVote = async (postId: string, amount: number) => {
       try {
@@ -66,19 +61,19 @@ const Home: React.FC<ExtendedHome> = ({ onOpenModal, announcements, events, onNa
   };
 
   return (
-    <div className="p-4 bg-gray-100 dark:bg-gray-900 min-h-full pb-16"> 
+    <div className="p-4 bg-gray-100 dark:bg-gray-900 min-h-full pb-16 transition-colors duration-200"> 
       
       {/* 1. Create Post Section */}
-      <div className="bg-white dark:bg-gray-800 rounded-xl shadow-lg p-6 mb-6 overflow-hidden border-l-4 border-indigo-500">
+      <div className="bg-white dark:bg-gray-800 rounded-xl shadow-lg p-6 mb-6 overflow-hidden border-l-4 border-indigo-500 transition-colors duration-200">
         <div className="flex flex-col md:flex-row justify-between items-start">
           <div className="mb-4 md:mb-0 md:mr-4 w-full">
             <h2 className="text-xl font-bold text-gray-800 dark:text-gray-100 mb-1">Campus Discussion</h2>
             <p className="text-gray-600 dark:text-gray-300 text-sm mb-4">
-               Viewing feeds for: <span className="font-bold text-indigo-600">@{userDomain || 'Guest'}</span>
+               Viewing feeds for: <span className="font-bold text-indigo-600 dark:text-indigo-400">@{userDomain || 'Guest'}</span>
             </p>
             <button 
               onClick={() => onOpenModal(ModalType.CREATE_POST)}
-              className="w-full bg-gray-100 text-left text-gray-500 px-4 py-3 rounded-lg hover:bg-gray-200 transition-colors text-sm border border-gray-200"
+              className="w-full bg-gray-100 dark:bg-gray-700 text-left text-gray-500 dark:text-gray-400 px-4 py-3 rounded-lg hover:bg-gray-200 dark:hover:bg-gray-600 transition-colors text-sm border border-gray-200 dark:border-gray-600 focus:outline-none focus:ring-2 focus:ring-indigo-500"
             >
               What's on your mind?
             </button>
@@ -92,7 +87,7 @@ const Home: React.FC<ExtendedHome> = ({ onOpenModal, announcements, events, onNa
         {announcements.length > 0 ? (
           <div className="space-y-3">
             {announcements.map(announcement => (
-              <div key={announcement.id} onClick={() => onOpenModal(ModalType.ANNOUNCEMENT_DETAIL, announcement)} className="bg-white dark:bg-gray-800 p-4 rounded-lg shadow-sm hover:shadow-md transition-shadow cursor-pointer border-l-4 border-orange-400">
+              <div key={announcement.id} onClick={() => onOpenModal(ModalType.ANNOUNCEMENT_DETAIL, announcement)} className="bg-white dark:bg-gray-800 p-4 rounded-lg shadow-sm hover:shadow-md transition-all cursor-pointer border-l-4 border-orange-400 dark:border-orange-500">
                 <h4 className="font-semibold text-indigo-700 dark:text-indigo-400 mb-1">{announcement.title}</h4>
                 <p className="text-xs text-gray-500 dark:text-gray-400 mb-1.5">{announcement.date}</p>
                 <p className="text-sm text-gray-600 dark:text-gray-300 line-clamp-2">{announcement.content}</p>
@@ -110,11 +105,11 @@ const Home: React.FC<ExtendedHome> = ({ onOpenModal, announcements, events, onNa
         {events.length > 0 ? (
           <div className="space-y-3">
             {events.map(event => (
-              <div key={event.id} onClick={() => onOpenModal(ModalType.EVENT_DETAIL, event)} className="bg-white dark:bg-gray-800 p-4 rounded-lg shadow-sm hover:shadow-md transition-shadow cursor-pointer border-l-4 border-green-500">
+              <div key={event.id} onClick={() => onOpenModal(ModalType.EVENT_DETAIL, event)} className="bg-white dark:bg-gray-800 p-4 rounded-lg shadow-sm hover:shadow-md transition-all cursor-pointer border-l-4 border-green-500">
                 <h4 className="font-semibold text-green-700 dark:text-green-400 mb-1">{event.title}</h4>
                 <div className="flex items-center text-xs text-gray-500 dark:text-gray-400 mb-1.5 space-x-3">
-                  <span className="flex items-center"><Calendar className="mr-1 text-gray-400 dark:text-gray-500"/> {event.date} at {event.time}</span>
-                  <span className="flex items-center"><Location className="mr-1 text-gray-400 dark:text-gray-500"/> {event.location}</span>
+                  <span className="flex items-center"><Calendar className="mr-1 w-4 h-4 text-gray-400 dark:text-gray-500"/> {event.date} at {event.time}</span>
+                  <span className="flex items-center"><Location className="mr-1 w-4 h-4 text-gray-400 dark:text-gray-500"/> {event.location}</span>
                 </div>
               </div>
             ))}
@@ -138,7 +133,7 @@ const Home: React.FC<ExtendedHome> = ({ onOpenModal, announcements, events, onNa
                 {posts.map(post => (
                     <div 
                         key={post.id} 
-                        className="bg-white dark:bg-gray-800 rounded-lg shadow-sm p-4 border border-gray-100 dark:border-gray-700 cursor-pointer hover:shadow-md transition-shadow"
+                        className="bg-white dark:bg-gray-800 rounded-lg shadow-sm p-4 border border-gray-100 dark:border-gray-700 cursor-pointer hover:shadow-md transition-all"
                         onClick={() => onNavigate && onNavigate(AppView.POST_DETAIL, { postId: post.id })}
                     >
                         {/* Post Header */}
@@ -165,14 +160,14 @@ const Home: React.FC<ExtendedHome> = ({ onOpenModal, announcements, events, onNa
                             <div className="flex items-center space-x-1 bg-gray-50 dark:bg-gray-700/50 rounded-full px-1 py-1" onClick={(e) => e.stopPropagation()}>
                                 <button 
                                     onClick={() => handleVote(post.id, 1)}
-                                    className="p-1.5 hover:bg-gray-200 rounded-full hover:text-orange-500 text-gray-400 transition-colors"
+                                    className="p-1.5 hover:bg-gray-200 dark:hover:bg-gray-600 rounded-full hover:text-orange-500 text-gray-400 transition-colors"
                                 >
                                     <ArrowUp className="w-5 h-5"/>
                                 </button>
                                 <span className="text-sm font-bold text-gray-700 dark:text-gray-300 w-6 text-center">{post.upvotes || 0}</span>
                                 <button 
                                     onClick={() => handleVote(post.id, -1)}
-                                    className="p-1.5 hover:bg-gray-200 rounded-full hover:text-indigo-500 text-gray-400 transition-colors"
+                                    className="p-1.5 hover:bg-gray-200 dark:hover:bg-gray-600 rounded-full hover:text-indigo-500 text-gray-400 transition-colors"
                                 >
                                     <ArrowDown className="w-5 h-5"/>
                                 </button>
@@ -187,10 +182,10 @@ const Home: React.FC<ExtendedHome> = ({ onOpenModal, announcements, events, onNa
                 ))}
             </div>
          ) : (
-            <div className="text-center py-12 bg-white dark:bg-gray-800 rounded-lg shadow-sm border border-dashed border-gray-300">
-                <p className="text-gray-800 font-medium mb-1">No discussions here yet!</p>
-                <p className="text-gray-500 text-sm mb-4">Be the first to start a thread for {userDomain}.</p>
-                <button onClick={() => onOpenModal(ModalType.CREATE_POST)} className="text-indigo-600 font-semibold text-sm hover:underline">Create a Post</button>
+            <div className="text-center py-12 bg-white dark:bg-gray-800 rounded-lg shadow-sm border border-dashed border-gray-300 dark:border-gray-700">
+                <p className="text-gray-800 dark:text-gray-200 font-medium mb-1">No discussions here yet!</p>
+                <p className="text-gray-500 dark:text-gray-400 text-sm mb-4">Be the first to start a thread for {userDomain}.</p>
+                <button onClick={() => onOpenModal(ModalType.CREATE_POST)} className="text-indigo-600 dark:text-indigo-400 font-semibold text-sm hover:underline focus:outline-none">Create a Post</button>
             </div>
          )}
       </div>

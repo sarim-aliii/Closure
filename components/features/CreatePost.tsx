@@ -1,19 +1,15 @@
 import React, { useState, useRef } from 'react';
-import { storage, db, auth } from '../../firebase'; 
+import { storage, db } from '../../firebase'; 
 import { ref, uploadString, getDownloadURL } from "firebase/storage";
 import { collection, addDoc, serverTimestamp } from "firebase/firestore";
 import { CreatePostProps } from '../../types';
-import Photo from '../icons/Photo'
-import XCircle from '../icons/XCircle'
+import Photo from '../icons/Photo';
+import XCircle from '../icons/XCircle';
+import { useUser } from '../../contexts/UserContext'; // Integrated Context
 
-
-const getDomainFromEmail = (email: string | null | undefined) => {
-    if (!email) return 'general';
-    const parts = email.split('@');
-    return parts.length === 2 ? parts[1].toLowerCase() : 'general';
-};
-
-const CreatePost: React.FC<CreatePostProps> = ({ onSubmit, onClose, currentUserId }) => {
+const CreatePost: React.FC<CreatePostProps> = ({ onSubmit, onClose }) => {
+  const { user, firebaseUser } = useUser(); // Use global user state
+  
   const [title, setTitle] = useState('');
   const [content, setContent] = useState('');
   const [imagePreview, setImagePreview] = useState<string | null>(null);
@@ -54,9 +50,7 @@ const CreatePost: React.FC<CreatePostProps> = ({ onSubmit, onClose, currentUserI
       return;
     }
     
-    // 2. Validate User is Logged In
-    const user = auth.currentUser;
-    if (!user) {
+    if (!user || !firebaseUser) {
         alert("You must be logged in to post.");
         return;
     }
@@ -65,33 +59,34 @@ const CreatePost: React.FC<CreatePostProps> = ({ onSubmit, onClose, currentUserI
     let uploadedImageUrl: string | undefined = undefined;
 
     try {
-      // 3. Image Upload Logic
+      // 1. Image Upload Logic
       if (imageBase64) {
         const imageName = `${Date.now()}_post_image`;
-        const imageRef = ref(storage, `post_images/${user.uid}/${imageName}`);
+        const imageRef = ref(storage, `post_images/${firebaseUser.uid}/${imageName}`);
         await uploadString(imageRef, imageBase64, 'data_url');
         uploadedImageUrl = await getDownloadURL(imageRef);
       }
       
-      // 4. EXTRACT COLLEGE DOMAIN
-      const collegeDomain = getDomainFromEmail(user.email);
+      // 2. Extract College Domain from Context User
+      const collegeDomain = user.email ? user.email.split('@')[1].toLowerCase() : 'general';
 
-      // 5. SAVE TO FIRESTORE
+      // 3. Save to Firestore
       await addDoc(collection(db, "posts"), {
           title: title.trim(),
           content: content.trim(),
           imageUrl: uploadedImageUrl || null,
           collegeDomain: collegeDomain,
-          authorId: user.uid,
-          authorName: user.displayName || "Anonymous Student", 
+          authorId: firebaseUser.uid,
+          authorName: user.name || "Anonymous Student", 
           authorEmail: user.email,
+          authorAvatarUrl: user.avatarUrl || null,
           isAnonymous: false,
           upvotes: 0,
           commentCount: 0,
           timestamp: serverTimestamp()
       });
 
-      // 6. Close Modal on Success
+      // 4. Close Modal on Success
       onClose();
 
     } catch (error) {
@@ -113,7 +108,7 @@ const CreatePost: React.FC<CreatePostProps> = ({ onSubmit, onClose, currentUserI
           id="postTitle"
           value={title}
           onChange={(e) => setTitle(e.target.value)}
-          className="w-full p-2 border border-gray-300 dark:border-gray-600 rounded-md shadow-sm focus:ring-indigo-500 focus:border-indigo-500 bg-white dark:bg-gray-700 text-gray-900 dark:text-gray-100"
+          className="w-full p-2.5 border border-gray-300 dark:border-gray-600 rounded-lg shadow-sm focus:ring-indigo-500 focus:border-indigo-500 bg-white dark:bg-gray-700 text-gray-900 dark:text-gray-100 placeholder-gray-400 dark:placeholder-gray-500"
           placeholder="Enter a catchy title"
           disabled={isLoading}
         />
@@ -127,16 +122,17 @@ const CreatePost: React.FC<CreatePostProps> = ({ onSubmit, onClose, currentUserI
           rows={4} 
           value={content}
           onChange={(e) => setContent(e.target.value)}
-          className="w-full p-2 border border-gray-300 dark:border-gray-600 rounded-md shadow-sm focus:ring-indigo-500 focus:border-indigo-500 bg-white dark:bg-gray-700 text-gray-900 dark:text-gray-100"
+          className="w-full p-2.5 border border-gray-300 dark:border-gray-600 rounded-lg shadow-sm focus:ring-indigo-500 focus:border-indigo-500 bg-white dark:bg-gray-700 text-gray-900 dark:text-gray-100 placeholder-gray-400 dark:placeholder-gray-500"
           placeholder="Share your thoughts in detail..."
           disabled={isLoading}
         />
       </div>
 
       <div className="mb-6">
-        <label htmlFor="postImage" className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1 flex items-center gap-2">
+        <label htmlFor="postImage" className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2 flex items-center gap-2">
           <Photo className="w-4 h-4" /> Add Image (Optional, max 2MB)
         </label>
+        
         <input
           type="file"
           id="postImage"
@@ -144,33 +140,35 @@ const CreatePost: React.FC<CreatePostProps> = ({ onSubmit, onClose, currentUserI
           accept="image/png, image/jpeg, image/gif"
           onChange={handleImageChange}
           className="block w-full text-sm text-gray-500 dark:text-gray-400
-            file:mr-4 file:py-2 file:px-4
+            file:mr-4 file:py-2.5 file:px-4
             file:rounded-md file:border-0
             file:text-sm file:font-semibold
-            file:bg-indigo-50 dark:file:bg-indigo-800 file:text-indigo-700 dark:file:text-indigo-300
-            hover:file:bg-indigo-100 dark:hover:file:bg-indigo-700"
+            file:bg-indigo-50 dark:file:bg-indigo-900/30 file:text-indigo-700 dark:file:text-indigo-300
+            hover:file:bg-indigo-100 dark:hover:file:bg-indigo-800
+            cursor-pointer"
           disabled={isLoading}
         />
+        
         {imagePreview && (
-          <div className="mt-3 relative inline-block">
-            <img src={imagePreview} alt="Selected preview" className="max-h-40 rounded-md border border-gray-300 dark:border-gray-600" />
+          <div className="mt-4 relative inline-block">
+            <img src={imagePreview} alt="Selected preview" className="max-h-40 rounded-lg border border-gray-300 dark:border-gray-600 shadow-sm" />
             <button 
                 onClick={removeImage}
                 disabled={isLoading}
-                className="absolute -top-2 -right-2 bg-red-500 text-white rounded-full p-1 hover:bg-red-600 shadow-md transition-colors"
+                className="absolute -top-2 -right-2 bg-red-500 text-white rounded-full p-1.5 hover:bg-red-600 shadow-md transition-colors"
                 aria-label="Remove image"
             >
-                <XCircle className="w-5 h-5"/>
+                <XCircle className="w-4 h-4"/>
             </button>
           </div>
         )}
       </div>
 
-      <div className="flex justify-end space-x-3 pt-2 border-t border-gray-200 dark:border-gray-700">
+      <div className="flex justify-end space-x-3 pt-4 border-t border-gray-200 dark:border-gray-700 mt-2">
         <button
           type="button"
           onClick={onClose}
-          className="px-4 py-2 text-sm font-medium text-gray-700 dark:text-gray-200 bg-white border border-gray-300 rounded-md shadow-sm hover:bg-gray-50 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-indigo-500 dark:bg-gray-700 dark:border-gray-600 dark:hover:bg-gray-600"
+          className="px-4 py-2 text-sm font-medium text-gray-700 dark:text-gray-200 bg-white border border-gray-300 rounded-md shadow-sm hover:bg-gray-50 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-indigo-500 dark:bg-gray-700 dark:border-gray-600 dark:hover:bg-gray-600 transition-colors"
           disabled={isLoading}
         >
           Cancel
@@ -179,7 +177,7 @@ const CreatePost: React.FC<CreatePostProps> = ({ onSubmit, onClose, currentUserI
           type="button"
           onClick={handleSubmit}
           disabled={isLoading || !title.trim() || !content.trim()}
-          className="inline-flex justify-center px-4 py-2 text-sm font-medium text-white bg-indigo-600 border border-transparent rounded-md shadow-sm hover:bg-indigo-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-indigo-500 disabled:opacity-50 disabled:cursor-not-allowed"
+          className="inline-flex justify-center px-4 py-2 text-sm font-medium text-white bg-indigo-600 border border-transparent rounded-md shadow-sm hover:bg-indigo-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-indigo-500 disabled:opacity-50 disabled:cursor-not-allowed transition-colors"
         >
           {isLoading ? (
              <span className="flex items-center">

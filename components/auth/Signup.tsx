@@ -6,12 +6,10 @@ import Eye from '../icons/Eye';
 import EyeSlash from '../icons/EyeSlash';
 import { SignupProps } from '../../types';
 
-
 const extractDomain = (email: string) => {
   const parts = email.split('@');
   return parts.length === 2 ? parts[1].toLowerCase() : '';
 };
-
 
 const checkDomainIsValid = async (domain: string): Promise<boolean> => {
   const API_URL = 'https://api.closure-app.com/validate-domain';
@@ -36,6 +34,7 @@ const checkDomainIsValid = async (domain: string): Promise<boolean> => {
   } catch (error) {
     console.warn("Domain verification API unreachable. Using local fallback list.", error);
     
+    // Fallback list for offline/dev testing
     const FALLBACK_DOMAINS = [
       'harvard.edu', 
       'mit.edu', 
@@ -45,6 +44,7 @@ const checkDomainIsValid = async (domain: string): Promise<boolean> => {
       'bmsce.ac.in',
     ];
     
+    // Simulate network delay
     await new Promise(resolve => setTimeout(resolve, 500));
     
     return FALLBACK_DOMAINS.includes(domain);
@@ -121,38 +121,38 @@ const Signup: React.FC<SignupProps> = ({ onSignupAttempt, onNavigateToLogin, err
   };
 
   return (
-    <div className="min-h-screen flex flex-col bg-gradient-to-br from-purple-600 via-pink-500 to-orange-500">
+    <div className="min-h-screen flex flex-col bg-gradient-to-br from-purple-600 via-pink-500 to-orange-500 dark:from-gray-900 dark:via-gray-800 dark:to-gray-900 transition-colors duration-200">
       
       {/* Top Section */}
       <div className="flex-grow flex flex-col items-center justify-center p-6 text-white text-center">
-        <div className="bg-purple-800 p-4 rounded-lg shadow-xl mb-6">
+        <div className="bg-purple-800/80 backdrop-blur-sm p-4 rounded-lg shadow-xl mb-6 border border-white/10">
            <svg className="w-16 h-16 text-white" fill="currentColor" viewBox="0 0 24 24">
             <path d="M12 2L2 7l10 5 10-5-10-5zM2 17l10 5 10-5M2 12l10 5 10-5"></path>
           </svg>
         </div>
-        <h1 className="text-3xl font-bold mb-2">Create Account</h1>
-        <p className="text-lg opacity-90 mb-8">Join Closure today!</p>
+        <h1 className="text-3xl font-bold mb-2 tracking-wide">Create Account</h1>
+        <p className="text-lg opacity-90 mb-8 font-light">Join Closure today!</p>
       </div>
 
       {/* Bottom Section: Form */}
-      <div className="bg-white p-6 sm:p-8 rounded-t-3xl shadow-top-xl">
+      <div className="bg-white dark:bg-gray-800 p-6 sm:p-8 rounded-t-3xl shadow-top-xl transition-colors duration-200">
         {(errorMessage && !localValidationError) && (
-          <div className="mb-4 p-3 bg-red-100 text-red-700 border border-red-300 rounded-lg text-sm text-center">
+          <div className="mb-4 p-3 bg-red-100 dark:bg-red-900/30 text-red-700 dark:text-red-300 border border-red-300 dark:border-red-700 rounded-lg text-sm text-center">
             {errorMessage}
           </div>
         )}
         {localValidationError && (
-           <div className="mb-4 p-3 bg-red-100 text-red-700 border border-red-300 rounded-lg text-sm text-center">
+           <div className="mb-4 p-3 bg-red-100 dark:bg-red-900/30 text-red-700 dark:text-red-300 border border-red-300 dark:border-red-700 rounded-lg text-sm text-center">
             {localValidationError}
           </div>
         )}
 
         {/* Name */}
         <div className="mb-4">
-          <label htmlFor="name" className="block text-sm font-medium text-gray-700 mb-1">Full Name</label>
+          <label htmlFor="name" className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">Full Name</label>
           <div className="relative">
              <div className="absolute inset-y-0 left-0 pl-3 flex items-center pointer-events-none">
-                <User className="h-5 w-5 text-gray-400" />
+                <User className="h-5 w-5 text-gray-400 dark:text-gray-500" />
             </div>
             <input
               type="text"
@@ -160,7 +160,7 @@ const Signup: React.FC<SignupProps> = ({ onSignupAttempt, onNavigateToLogin, err
               value={name}
               onChange={(e) => setName(e.target.value)}
               placeholder="John Doe"
-              className="w-full pl-10 pr-3 py-2.5 border border-gray-300 rounded-lg shadow-sm focus:ring-indigo-500 focus:border-indigo-500 sm:text-sm"
+              className="w-full pl-10 pr-3 py-2.5 border border-gray-300 dark:border-gray-600 rounded-lg shadow-sm focus:ring-purple-500 focus:border-purple-500 sm:text-sm bg-white dark:bg-gray-700 text-gray-900 dark:text-gray-100 placeholder-gray-400 dark:placeholder-gray-500"
               required
               disabled={isLoading}
               autoComplete="name"
@@ -170,12 +170,12 @@ const Signup: React.FC<SignupProps> = ({ onSignupAttempt, onNavigateToLogin, err
         
         {/* Email */}
         <div className="mb-4">
-          <label htmlFor="signup-email" className="block text-sm font-medium text-gray-700 mb-1">
+          <label htmlFor="signup-email" className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">
             College Email Address
           </label>
           <div className="relative">
             <div className="absolute inset-y-0 left-0 pl-3 flex items-center pointer-events-none">
-              <AtSymbol className="h-5 w-5 text-gray-400" />
+              <AtSymbol className="h-5 w-5 text-gray-400 dark:text-gray-500" />
             </div>
             <input
               type="email"
@@ -183,24 +183,24 @@ const Signup: React.FC<SignupProps> = ({ onSignupAttempt, onNavigateToLogin, err
               value={email}
               onChange={(e) => setEmail(e.target.value)}
               placeholder="your.name@college.edu"
-              className="w-full pl-10 pr-3 py-2.5 border border-gray-300 rounded-lg shadow-sm focus:ring-indigo-500 focus:border-indigo-500 sm:text-sm"
+              className="w-full pl-10 pr-3 py-2.5 border border-gray-300 dark:border-gray-600 rounded-lg shadow-sm focus:ring-purple-500 focus:border-purple-500 sm:text-sm bg-white dark:bg-gray-700 text-gray-900 dark:text-gray-100 placeholder-gray-400 dark:placeholder-gray-500"
               required
               disabled={isLoading}
               autoCapitalize="none"
               autoComplete="email"
             />
           </div>
-          <p className="mt-1 text-xs text-gray-500">
+          <p className="mt-1 text-xs text-gray-500 dark:text-gray-400">
             Must be a valid .edu or recognized college domain.
           </p>
         </div>
 
         {/* Password */}
         <div className="mb-4">
-          <label htmlFor="signup-password" className="block text-sm font-medium text-gray-700 mb-1">Password</label>
+          <label htmlFor="signup-password" className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">Password</label>
           <div className="relative">
             <div className="absolute inset-y-0 left-0 pl-3 flex items-center pointer-events-none">
-              <LockClosed className="h-5 w-5 text-gray-400" />
+              <LockClosed className="h-5 w-5 text-gray-400 dark:text-gray-500" />
             </div>
             <input
               type={showPassword ? "text" : "password"}
@@ -208,7 +208,7 @@ const Signup: React.FC<SignupProps> = ({ onSignupAttempt, onNavigateToLogin, err
               value={password}
               onChange={(e) => setPassword(e.target.value)}
               placeholder="•••••••• (min. 6 characters)"
-              className="w-full pl-10 pr-10 py-2.5 border border-gray-300 rounded-lg shadow-sm focus:ring-indigo-500 focus:border-indigo-500 sm:text-sm"
+              className="w-full pl-10 pr-10 py-2.5 border border-gray-300 dark:border-gray-600 rounded-lg shadow-sm focus:ring-purple-500 focus:border-purple-500 sm:text-sm bg-white dark:bg-gray-700 text-gray-900 dark:text-gray-100 placeholder-gray-400 dark:placeholder-gray-500"
               required
               disabled={isLoading}
               autoComplete="new-password"
@@ -216,7 +216,7 @@ const Signup: React.FC<SignupProps> = ({ onSignupAttempt, onNavigateToLogin, err
             <button
               type="button"
               onClick={() => setShowPassword(!showPassword)}
-              className="absolute inset-y-0 right-0 pr-3 flex items-center text-sm leading-5 text-gray-500 hover:text-gray-700"
+              className="absolute inset-y-0 right-0 pr-3 flex items-center text-sm leading-5 text-gray-500 dark:text-gray-400 hover:text-gray-700 dark:hover:text-gray-200"
               aria-label={showPassword ? "Hide password" : "Show password"}
               disabled={isLoading}
             >
@@ -227,10 +227,10 @@ const Signup: React.FC<SignupProps> = ({ onSignupAttempt, onNavigateToLogin, err
 
         {/* Confirm Password */}
         <div className="mb-6">
-          <label htmlFor="confirm-password" className="block text-sm font-medium text-gray-700 mb-1">Confirm Password</label>
+          <label htmlFor="confirm-password" className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">Confirm Password</label>
           <div className="relative">
             <div className="absolute inset-y-0 left-0 pl-3 flex items-center pointer-events-none">
-              <LockClosed className="h-5 w-5 text-gray-400" />
+              <LockClosed className="h-5 w-5 text-gray-400 dark:text-gray-500" />
             </div>
             <input
               type={showConfirmPassword ? "text" : "password"}
@@ -238,7 +238,7 @@ const Signup: React.FC<SignupProps> = ({ onSignupAttempt, onNavigateToLogin, err
               value={confirmPassword}
               onChange={(e) => setConfirmPassword(e.target.value)}
               placeholder="••••••••"
-              className="w-full pl-10 pr-10 py-2.5 border border-gray-300 rounded-lg shadow-sm focus:ring-indigo-500 focus:border-indigo-500 sm:text-sm"
+              className="w-full pl-10 pr-10 py-2.5 border border-gray-300 dark:border-gray-600 rounded-lg shadow-sm focus:ring-purple-500 focus:border-purple-500 sm:text-sm bg-white dark:bg-gray-700 text-gray-900 dark:text-gray-100 placeholder-gray-400 dark:placeholder-gray-500"
               required
               disabled={isLoading}
               autoComplete="new-password"
@@ -246,7 +246,7 @@ const Signup: React.FC<SignupProps> = ({ onSignupAttempt, onNavigateToLogin, err
             <button
               type="button"
               onClick={() => setShowConfirmPassword(!showConfirmPassword)}
-              className="absolute inset-y-0 right-0 pr-3 flex items-center text-sm leading-5 text-gray-500 hover:text-gray-700"
+              className="absolute inset-y-0 right-0 pr-3 flex items-center text-sm leading-5 text-gray-500 dark:text-gray-400 hover:text-gray-700 dark:hover:text-gray-200"
               aria-label={showConfirmPassword ? "Hide password" : "Show password"}
               disabled={isLoading}
             >
@@ -259,7 +259,7 @@ const Signup: React.FC<SignupProps> = ({ onSignupAttempt, onNavigateToLogin, err
         <button 
           onClick={handleSignup}
           disabled={isLoading}
-          className="w-full bg-purple-600 text-white py-3 px-4 rounded-lg flex items-center justify-center font-semibold hover:bg-purple-700 transition-colors text-lg shadow-md focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-purple-500 disabled:opacity-50"
+          className="w-full bg-purple-600 dark:bg-purple-700 text-white py-3 px-4 rounded-lg flex items-center justify-center font-semibold hover:bg-purple-700 dark:hover:bg-purple-600 transition-colors text-lg shadow-md focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-purple-500 disabled:opacity-50 disabled:cursor-not-allowed"
         >
           {isLoading ? (
              <span className="flex items-center">
@@ -270,12 +270,12 @@ const Signup: React.FC<SignupProps> = ({ onSignupAttempt, onNavigateToLogin, err
         </button>
 
         {/* Login Link */}
-        <p className="mt-6 text-center text-sm text-gray-600">
+        <p className="mt-6 text-center text-sm text-gray-600 dark:text-gray-400">
           Already have an account?{' '}
           <button 
             onClick={onNavigateToLogin} 
             disabled={isLoading}
-            className="font-medium text-purple-600 hover:text-purple-500 focus:outline-none focus:underline disabled:opacity-50"
+            className="font-medium text-purple-600 dark:text-purple-400 hover:text-purple-500 dark:hover:text-purple-300 focus:outline-none focus:underline disabled:opacity-50"
           >
             Login
           </button>

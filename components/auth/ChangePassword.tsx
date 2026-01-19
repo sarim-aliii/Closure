@@ -5,11 +5,62 @@ import EyeSlash from '../icons/EyeSlash';
 import { ChangePasswordProps, ModalType } from '../../types';
 
 
-interface ExtendedChangePassword extends ChangePasswordProps {
+interface ExtendedChangePasswordProps extends ChangePasswordProps {
   onOpenModal?: (modalType: ModalType) => void;
 }
 
-const ChangePassword: React.FC<ExtendedChangePassword> = ({ onChangePassword, onClose, onOpenModal }) => {
+interface PasswordInputProps {
+  id: string;
+  label: string;
+  value: string;
+  onChange: (val: string) => void;
+  show: boolean;
+  onToggleShow: () => void;
+  placeholder?: string;
+  disabled?: boolean;
+}
+
+
+const PasswordInput: React.FC<PasswordInputProps> = ({ 
+  id, 
+  label, 
+  value, 
+  onChange, 
+  show, 
+  onToggleShow, 
+  placeholder = "••••••••", 
+  disabled = false 
+}) => (
+  <div className="mb-4">
+    <label htmlFor={id} className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">{label}</label>
+    <div className="relative">
+      <div className="absolute inset-y-0 left-0 pl-3 flex items-center pointer-events-none">
+        <LockClosed className="h-5 w-5 text-gray-400 dark:text-gray-500" />
+      </div>
+      <input
+        type={show ? "text" : "password"}
+        id={id}
+        value={value}
+        onChange={(e) => onChange(e.target.value)}
+        placeholder={placeholder}
+        className="w-full pl-10 pr-10 py-2.5 border border-gray-300 dark:border-gray-600 rounded-lg shadow-sm focus:ring-indigo-500 focus:border-indigo-500 sm:text-sm bg-white dark:bg-gray-700 text-gray-900 dark:text-gray-100"
+        required
+        disabled={disabled}
+      />
+      <button
+        type="button"
+        onClick={onToggleShow}
+        className="absolute inset-y-0 right-0 pr-3 flex items-center text-sm leading-5 text-gray-500 dark:text-gray-400 hover:text-gray-700 dark:hover:text-gray-200"
+        aria-label={show ? "Hide password" : "Show password"}
+        disabled={disabled}
+      >
+        {show ? <EyeSlash className="h-5 w-5" /> : <Eye className="h-5 w-5" />}
+      </button>
+    </div>
+  </div>
+);
+
+const ChangePassword: React.FC<ExtendedChangePasswordProps> = ({ onChangePassword, onClose, onOpenModal }) => {
   const [currentPassword, setCurrentPassword] = useState('');
   const [newPassword, setNewPassword] = useState('');
   const [confirmNewPassword, setConfirmNewPassword] = useState('');
@@ -45,44 +96,6 @@ const ChangePassword: React.FC<ExtendedChangePassword> = ({ onChangePassword, on
         if(!error) setError("Failed to change password. Check your current password.");
     }
   };
-  
-  const PasswordInput: React.FC<{
-    id: string,
-    label: string,
-    value: string,
-    onChange: (val: string) => void,
-    show: boolean,
-    onToggleShow: () => void,
-    placeholder?: string
-  }> = ({ id, label, value, onChange, show, onToggleShow, placeholder="••••••••" }) => (
-    <div className="mb-4">
-      <label htmlFor={id} className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">{label}</label>
-      <div className="relative">
-        <div className="absolute inset-y-0 left-0 pl-3 flex items-center pointer-events-none">
-          <LockClosed className="h-5 w-5 text-gray-400 dark:text-gray-500" />
-        </div>
-        <input
-          type={show ? "text" : "password"}
-          id={id}
-          value={value}
-          onChange={(e) => onChange(e.target.value)}
-          placeholder={placeholder}
-          className="w-full pl-10 pr-10 py-2.5 border border-gray-300 dark:border-gray-600 rounded-lg shadow-sm focus:ring-indigo-500 focus:border-indigo-500 sm:text-sm bg-white dark:bg-gray-700 text-gray-900 dark:text-gray-100"
-          required
-          disabled={isLoading}
-        />
-        <button
-          type="button"
-          onClick={onToggleShow}
-          className="absolute inset-y-0 right-0 pr-3 flex items-center text-sm leading-5 text-gray-500 dark:text-gray-400 hover:text-gray-700 dark:hover:text-gray-200"
-          aria-label={show ? "Hide password" : "Show password"}
-          disabled={isLoading}
-        >
-          {show ? <EyeSlash className="h-5 w-5" /> : <Eye className="h-5 w-5" />}
-        </button>
-      </div>
-    </div>
-  );
 
   return (
     <div className="p-1">
@@ -99,14 +112,16 @@ const ChangePassword: React.FC<ExtendedChangePassword> = ({ onChangePassword, on
         onChange={setCurrentPassword}
         show={showCurrentPassword}
         onToggleShow={() => setShowCurrentPassword(!showCurrentPassword)}
+        disabled={isLoading}
       />
       
-      {/* Forgot Password Link - UX Improvement */}
+      {/* Forgot Password Link */}
       <div className="flex justify-end mb-4 -mt-2">
         <button
             type="button"
             onClick={() => onOpenModal && onOpenModal(ModalType.FORGOT_PASSWORD)}
-            className="text-xs text-indigo-600 dark:text-indigo-400 hover:underline"
+            className="text-xs text-indigo-600 dark:text-indigo-400 hover:underline disabled:opacity-50"
+            disabled={isLoading}
         >
             Forgot current password?
         </button>
@@ -120,6 +135,7 @@ const ChangePassword: React.FC<ExtendedChangePassword> = ({ onChangePassword, on
         show={showNewPassword}
         onToggleShow={() => setShowNewPassword(!showNewPassword)}
         placeholder="Min. 6 characters"
+        disabled={isLoading}
       />
       <PasswordInput 
         id="confirmNewPassword"
@@ -128,6 +144,7 @@ const ChangePassword: React.FC<ExtendedChangePassword> = ({ onChangePassword, on
         onChange={setConfirmNewPassword}
         show={showConfirmNewPassword}
         onToggleShow={() => setShowConfirmNewPassword(!showConfirmNewPassword)}
+        disabled={isLoading}
       />
       
       <div className="flex justify-end space-x-3 mt-4 pt-2 border-t border-gray-100 dark:border-gray-700">

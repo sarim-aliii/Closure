@@ -5,11 +5,11 @@ import ArrowLeft from '../icons/ArrowLeft';
 import Cart from '../icons/Cart';
 import { Notification, TopBarProps } from '../../types';
 import NotificationDropdown from '../features/NotificationDropdown';
+import { useUser } from '../../contexts/UserContext';
 
 
 const TopBar: React.FC<TopBarProps> = ({
   title,
-  userName,
   showMenuButton = true,
   onMenuClick,
   showBackButton = false,
@@ -20,6 +20,7 @@ const TopBar: React.FC<TopBarProps> = ({
   cartItemCount = 0,
   onCartClick,
 }) => {
+  const { user } = useUser(); // Access global user state directly
   const [showNotificationsDropdown, setShowNotificationsDropdown] = useState(false);
 
   const unreadCount = notifications.filter((n: Notification) => !n.read).length;
@@ -37,23 +38,27 @@ const TopBar: React.FC<TopBarProps> = ({
     <div className="bg-indigo-700 dark:bg-indigo-800 text-white p-4 flex items-center justify-between shadow-md sticky top-0 z-30 transition-colors duration-200">
       
       {/* LEFT SECTION: Navigation & Title */}
-      <div className="flex items-center">
+      <div className="flex items-center gap-3">
         {showBackButton ? (
-          <button onClick={onBackClick} className="mr-3 p-1 rounded-full hover:bg-indigo-600 dark:hover:bg-indigo-700 transition-colors" aria-label="Go back">
+          <button onClick={onBackClick} className="p-1 rounded-full hover:bg-indigo-600 dark:hover:bg-indigo-700 transition-colors" aria-label="Go back">
             <ArrowLeft className="w-6 h-6 text-white" />
           </button>
         ) : (
           showMenuButton && (
-            <button onClick={onMenuClick} className="mr-3 p-1 rounded-full hover:bg-indigo-600 dark:hover:bg-indigo-700 transition-colors" aria-label="Open menu">
+            <button onClick={onMenuClick} className="p-1 rounded-full hover:bg-indigo-600 dark:hover:bg-indigo-700 transition-colors" aria-label="Open menu">
               <Menu className="w-6 h-6 text-white" />
             </button>
           )
         )}
         
-        <div>
+        <div className="flex flex-col">
             <h1 className="text-xl font-bold leading-tight tracking-tight text-white">{title}</h1>
-            {userName && title === "Closure" && ( 
-                 <p className="text-xs opacity-90 leading-tight text-indigo-100 dark:text-indigo-200 font-medium">Hi, {userName.split(' ')[0]}!</p>
+            {user && title === "Closure" && ( 
+                 <div className="flex items-center gap-2 mt-0.5">
+                    <p className="text-xs opacity-90 leading-tight text-indigo-100 dark:text-indigo-200 font-medium">
+                        Hi, {user.name.split(' ')[0]}!
+                    </p>
+                 </div>
             )}
         </div>
       </div>

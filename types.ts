@@ -397,7 +397,7 @@ export interface ViewFreeMaterialContentProps {
   onClose?: () => void;
 }
 
-export interface WriteExperience {
+export interface WriteExperienceProps {
   onSubmit: (experienceText: string, rating: number) => void;
   onClose: () => void;
 }

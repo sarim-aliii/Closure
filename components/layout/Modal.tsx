@@ -1,7 +1,6 @@
 import React, { useEffect, useState } from 'react';
 import { ModalProps } from '../../types';
 
-
 const Modal: React.FC<ModalProps> = ({ isOpen, onClose, title, children, size = 'md' }) => {
   const [isVisible, setIsVisible] = useState(false);
   const [shouldRender, setShouldRender] = useState(false);

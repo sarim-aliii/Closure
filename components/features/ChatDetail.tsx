@@ -1,32 +1,32 @@
 import React, { useState, useRef, useEffect } from 'react';
 import { ChatMessage, ChatDetailProps } from '../../types';
 import ArrowLeft from '../icons/ArrowLeft';
-import { auth, db, storage } from '../../firebase';
+import { db, storage } from '../../firebase';
 import { collection, addDoc, query, orderBy, onSnapshot, serverTimestamp, updateDoc, doc } from 'firebase/firestore';
 import { ref, uploadString, getDownloadURL } from 'firebase/storage';
-import Image from '../icons/Image'
-import Send from '../icons/Send'
+import Image from '../icons/Image';
+import Send from '../icons/Send';
+import { useUser } from '../../contexts/UserContext'; 
 
 
-
-interface ExtendedChatDetail extends ChatDetailProps {
-  currentUserId?: string;
-}
-
-const ChatDetail: React.FC<ExtendedChatDetail> = ({ 
+const ChatDetail: React.FC<ChatDetailProps> = ({ 
   conversationId, 
   onBack, 
   initialConversation, 
-  currentUserId 
 }) => {
+  const { firebaseUser } = useUser(); 
+  const currentUserId = firebaseUser?.uid;
+
   const [messages, setMessages] = useState<ChatMessage[]>([]);
   const [inputText, setInputText] = useState('');
   const messagesEndRef = useRef<HTMLDivElement>(null);
   const fileInputRef = useRef<HTMLInputElement>(null);
+  
   const otherParticipant = initialConversation?.participants.find(p => p.id !== currentUserId);
   const conversationName = otherParticipant?.name || "Chat";
   const conversationAvatar = otherParticipant?.avatarUrl;
 
+  // 1. Listen for Messages
   useEffect(() => {
     if (!conversationId) return;
     const q = query(
@@ -38,6 +38,7 @@ const ChatDetail: React.FC<ExtendedChatDetail> = ({
         const fetchedMessages = snapshot.docs.map(doc => ({
             id: doc.id,
             ...doc.data(),
+            // Handle Firestore Timestamps safely
             timestamp: doc.data().timestamp?.toDate().toISOString() || new Date().toISOString()
         })) as ChatMessage[];
         
@@ -47,29 +48,33 @@ const ChatDetail: React.FC<ExtendedChatDetail> = ({
     return () => unsubscribe();
   }, [conversationId]);
 
+  // 2. Auto-scroll to bottom
   useEffect(() => {
     messagesEndRef.current?.scrollIntoView({ behavior: "smooth" });
   }, [messages]);
 
+  // 3. Send Message Handler
   const handleSend = async () => {
-    if (!inputText.trim()) return;
+    if (!inputText.trim() || !currentUserId) return;
 
     const textToSend = inputText.trim();
     setInputText(''); 
 
     try {
+        // Add message to subcollection
         await addDoc(collection(db, "chats", conversationId, "messages"), {
             text: textToSend,
-            senderId: auth.currentUser?.uid,
+            senderId: currentUserId,
             timestamp: serverTimestamp(),
             type: 'text'
         });
 
+        // Update parent chat document with last message info (for list view)
         const chatRef = doc(db, "chats", conversationId);
         await updateDoc(chatRef, {
             lastMessage: textToSend,
             lastMessageTimestamp: serverTimestamp(),
-            lastSenderId: auth.currentUser?.uid
+            lastSenderId: currentUserId
         });
 
     } catch (error) {
@@ -77,9 +82,10 @@ const ChatDetail: React.FC<ExtendedChatDetail> = ({
     }
   };
 
+  // 4. Image Upload Handler
   const handleImageUpload = async (event: React.ChangeEvent<HTMLInputElement>) => {
     const file = event.target.files?.[0];
-    if (file && auth.currentUser) {
+    if (file && currentUserId) {
       const reader = new FileReader();
       reader.onloadend = async () => {
         const base64String = reader.result as string;
@@ -92,7 +98,7 @@ const ChatDetail: React.FC<ExtendedChatDetail> = ({
 
             await addDoc(collection(db, "chats", conversationId, "messages"), {
                 imageUrl: downloadUrl,
-                senderId: auth.currentUser?.uid,
+                senderId: currentUserId,
                 timestamp: serverTimestamp(),
                 type: 'image'
             });
@@ -101,7 +107,7 @@ const ChatDetail: React.FC<ExtendedChatDetail> = ({
             await updateDoc(chatRef, {
                 lastMessage: "📷 Image",
                 lastMessageTimestamp: serverTimestamp(),
-                lastSenderId: auth.currentUser?.uid
+                lastSenderId: currentUserId
             });
 
         } catch (error) {
@@ -113,10 +119,10 @@ const ChatDetail: React.FC<ExtendedChatDetail> = ({
   };
 
   return (
-    <div className="h-screen w-screen flex flex-col bg-gray-50 dark:bg-gray-900">
+    <div className="h-screen w-screen flex flex-col bg-gray-50 dark:bg-gray-900 transition-colors duration-200">
       {/* Header */}
-      <div className="bg-white dark:bg-gray-800 border-b border-gray-200 dark:border-gray-700 p-4 flex items-center shadow-sm z-10">
-        <button onClick={onBack} className="mr-3 p-1 rounded-full hover:bg-gray-100 dark:hover:bg-gray-700 text-gray-600 dark:text-gray-300">
+      <div className="bg-white dark:bg-gray-800 border-b border-gray-200 dark:border-gray-700 p-4 flex items-center shadow-sm z-10 safe-area-top">
+        <button onClick={onBack} className="mr-3 p-1 rounded-full hover:bg-gray-100 dark:hover:bg-gray-700 text-gray-600 dark:text-gray-300 transition-colors">
           <ArrowLeft className="w-6 h-6" />
         </button>
         
@@ -124,19 +130,22 @@ const ChatDetail: React.FC<ExtendedChatDetail> = ({
             {conversationAvatar ? (
                 <img src={conversationAvatar} alt={conversationName} className="w-10 h-10 rounded-full mr-3 object-cover border border-gray-200 dark:border-gray-600" />
             ) : (
-                <div className="w-10 h-10 rounded-full mr-3 bg-indigo-100 text-indigo-600 flex items-center justify-center font-bold">
+                <div className="w-10 h-10 rounded-full mr-3 bg-indigo-100 dark:bg-indigo-900/50 text-indigo-600 dark:text-indigo-400 flex items-center justify-center font-bold">
                     {conversationName.charAt(0)}
                 </div>
             )}
             <div>
                 <h1 className="text-lg font-semibold text-gray-800 dark:text-gray-100 leading-tight">{conversationName}</h1>
-                <span className="text-xs text-green-500 font-medium">Online</span>
+                <span className="text-xs text-green-500 font-medium flex items-center">
+                    <span className="w-2 h-2 bg-green-500 rounded-full mr-1"></span>
+                    Online
+                </span>
             </div>
         </div>
       </div>
 
       {/* Messages Area */}
-      <div className="flex-grow overflow-y-auto p-4 space-y-4 bg-gray-50 dark:bg-gray-900">
+      <div className="flex-grow overflow-y-auto p-4 space-y-4 bg-gray-50 dark:bg-gray-900 custom-scrollbar">
         {messages.map(msg => {
             const isMe = msg.senderId === currentUserId;
             return (
@@ -148,7 +157,7 @@ const ChatDetail: React.FC<ExtendedChatDetail> = ({
                             ? 'bg-indigo-600 text-white rounded-tr-none' 
                             : 'bg-white dark:bg-gray-800 text-gray-800 dark:text-gray-100 rounded-tl-none border border-gray-100 dark:border-gray-700'
                         }`}>
-                            {msg.text && <p className="text-sm md:text-base leading-relaxed">{msg.text}</p>}
+                            {msg.text && <p className="text-sm md:text-base leading-relaxed whitespace-pre-wrap">{msg.text}</p>}
                             {msg.imageUrl && (
                                 <img src={msg.imageUrl} alt="Attachment" className="rounded-lg mt-1 max-h-60 w-full object-cover" />
                             )}
@@ -168,7 +177,7 @@ const ChatDetail: React.FC<ExtendedChatDetail> = ({
       </div>
 
       {/* Input Area */}
-      <div className="bg-white dark:bg-gray-800 border-t border-gray-200 dark:border-gray-700 p-3 flex items-end space-x-2">
+      <div className="bg-white dark:bg-gray-800 border-t border-gray-200 dark:border-gray-700 p-3 flex items-end space-x-2 safe-area-bottom">
         <button 
           onClick={() => fileInputRef.current?.click()}
           className="p-3 text-gray-500 dark:text-gray-400 hover:text-indigo-600 dark:hover:text-indigo-400 hover:bg-gray-100 dark:hover:bg-gray-700 rounded-full transition-colors"

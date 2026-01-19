@@ -2,7 +2,9 @@ import React, { useState, useEffect } from 'react';
 import { FAQItemProps, HelpSupport as HelpSupportProps } from '../../types';
 import { db } from '../../firebase'; 
 import { collection, getDocs, query, orderBy } from 'firebase/firestore';
-
+import ChevronDown from '../icons/ChevronDown';
+import QuestionMarkCircle from '../icons/QuestionMarkCircle';
+import Chat from '../icons/Chat';
 
 const FAQItem: React.FC<FAQItemProps> = ({ question, answer }) => {
   const [isOpen, setIsOpen] = useState(false);
@@ -16,15 +18,13 @@ const FAQItem: React.FC<FAQItemProps> = ({ question, answer }) => {
         <span className="font-medium text-gray-700 dark:text-gray-200 text-sm sm:text-base group-hover:text-indigo-600 dark:group-hover:text-indigo-400 transition-colors">
           {question}
         </span>
-        <span className={`transform transition-transform duration-200 ml-2 ${isOpen ? 'rotate-180' : ''}`}>
-          <svg xmlns="http://www.w3.org/2000/svg" className="h-5 w-5 text-gray-400 dark:text-gray-500" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 9l-7 7-7-7" />
-          </svg>
+        <span className={`transform transition-transform duration-200 ml-2 text-gray-400 dark:text-gray-500 ${isOpen ? 'rotate-180' : ''}`}>
+          <ChevronDown className="w-5 h-5" />
         </span>
       </button>
       
       {isOpen && (
-        <div className="mt-2 text-sm text-gray-600 dark:text-gray-300 pr-4 leading-relaxed bg-gray-50 dark:bg-gray-700/30 p-3 rounded-lg">
+        <div className="mt-2 text-sm text-gray-600 dark:text-gray-300 pr-4 leading-relaxed bg-gray-50 dark:bg-gray-700/30 p-3 rounded-lg border border-gray-100 dark:border-gray-700/50">
           {answer}
         </div>
       )}
@@ -67,19 +67,17 @@ const HelpSupport: React.FC<HelpSupportProps> = ({ onStartSupportChat }) => {
   }, []);
 
   return (
-    <div className="p-4 bg-gray-100 dark:bg-gray-900 min-h-full pb-16">
+    <div className="p-4 bg-gray-100 dark:bg-gray-900 min-h-full pb-16 transition-colors duration-200">
       <div className="mb-6 px-1">
         <h1 className="text-xl font-bold text-gray-800 dark:text-gray-100 mb-1">Help & Support</h1>
         <p className="text-sm text-gray-500 dark:text-gray-400">Find answers or contact our team.</p>
       </div>
 
       {/* FAQs Section */}
-      <div className="bg-white dark:bg-gray-800 rounded-lg shadow-sm p-4 mb-6">
+      <div className="bg-white dark:bg-gray-800 rounded-lg shadow-sm p-4 mb-6 border border-gray-100 dark:border-gray-700">
         <h4 className="text-md font-semibold text-gray-800 dark:text-gray-100 mb-4 flex items-center">
             <span className="bg-indigo-100 dark:bg-indigo-900/50 text-indigo-600 dark:text-indigo-400 p-1.5 rounded-md mr-2">
-                <svg xmlns="http://www.w3.org/2000/svg" className="h-5 w-5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M8.228 9c.549-1.165 2.03-2 3.772-2 2.21 0 4 1.343 4 3 0 1.4-1.278 2.575-3.006 2.907-.542.104-.994.54-.994 1.093m0 3h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z" />
-                </svg>
+                <QuestionMarkCircle className="h-5 w-5" />
             </span>
             Frequently Asked Questions
         </h4>
@@ -98,11 +96,9 @@ const HelpSupport: React.FC<HelpSupportProps> = ({ onStartSupportChat }) => {
       </div>
 
       {/* Support Action Section */}
-      <div className="bg-white dark:bg-gray-800 rounded-lg shadow-sm p-6 text-center">
+      <div className="bg-white dark:bg-gray-800 rounded-lg shadow-sm p-6 text-center border border-gray-100 dark:border-gray-700">
          <div className="w-12 h-12 bg-green-100 dark:bg-green-900/30 rounded-full flex items-center justify-center mx-auto mb-3">
-            <svg xmlns="http://www.w3.org/2000/svg" className="h-6 w-6 text-green-600 dark:text-green-400" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M18.364 5.636l-3.536 3.536m0 5.656l3.536 3.536M9.172 9.172L5.636 5.636m3.536 9.192l-3.536 3.536M21 12a9 9 0 11-18 0 9 9 0 0118 0zm-5 0a4 4 0 11-8 0 4 4 0 018 0z" />
-            </svg>
+            <Chat className="h-6 w-6 text-green-600 dark:text-green-400" />
          </div>
          <h4 className="text-md font-semibold text-gray-800 dark:text-gray-100 mb-2">Still need help?</h4>
          <p className="text-sm text-gray-500 dark:text-gray-400 mb-5">
@@ -110,12 +106,10 @@ const HelpSupport: React.FC<HelpSupportProps> = ({ onStartSupportChat }) => {
          </p>
          
          <button
-            onClick={onStartSupportChat}
-            className="w-full bg-indigo-600 text-white py-3 px-4 rounded-lg font-semibold hover:bg-indigo-700 dark:hover:bg-indigo-500 transition-colors text-sm shadow-md flex items-center justify-center focus:ring-2 focus:ring-offset-2 focus:ring-indigo-500"
+           onClick={onStartSupportChat}
+           className="w-full bg-indigo-600 text-white py-3 px-4 rounded-lg font-semibold hover:bg-indigo-700 dark:hover:bg-indigo-500 transition-colors text-sm shadow-md flex items-center justify-center focus:ring-2 focus:ring-offset-2 focus:ring-indigo-500"
          >
-            <svg xmlns="http://www.w3.org/2000/svg" className="h-5 w-5 mr-2" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M8 12h.01M12 12h.01M16 12h.01M21 12c0 4.418-4.03 8-9 8a9.863 9.863 0 01-4.255-.949L3 20l1.395-3.72C3.512 15.042 3 13.574 3 12c0-4.418 4.03-8 9-8s9 3.582 9 8z" />
-            </svg>
+            <Chat className="h-5 w-5 mr-2" />
             Chat with Support
          </button>
          <p className="text-xs text-gray-400 dark:text-gray-500 mt-4">

@@ -8,6 +8,9 @@ import {
   Post, Address, Order 
 } from './types';
 
+// 1. Context Hook (Assumed path based on setup)
+import { useUser } from './contexts/UserContext';
+
 // 2. Auth Components
 import Login from './components/auth/Login';
 import Signup from './components/auth/Signup';
@@ -49,8 +52,6 @@ import TermsAndConditions from './components/layout/TermsAndConditions';
 // 5. Firebase Imports
 import { auth, db, storage } from './firebase';
 import { 
-  User as FirebaseUser, 
-  onAuthStateChanged, 
   signOut, 
   createUserWithEmailAndPassword, 
   signInWithEmailAndPassword, 
@@ -60,7 +61,7 @@ import {
   EmailAuthProvider 
 } from "firebase/auth"; 
 import { 
-  doc, setDoc, getDoc, updateDoc, collection, addDoc, 
+  doc, setDoc, updateDoc, collection, addDoc, 
   query, orderBy, getDocs, writeBatch, serverTimestamp, 
   increment, arrayUnion, arrayRemove, Timestamp 
 } from "firebase/firestore"; 
@@ -69,6 +70,9 @@ import { ref, uploadString, getDownloadURL } from "firebase/storage";
 export type Theme = 'light' | 'dark';
 
 const App: React.FC = () => {
+  // --- Context Hooks ---
+  const { user, firebaseUser, loading, refreshProfile } = useUser();
+
   // --- State Management ---
   const [currentView, setCurrentView] = useState<AppView>(AppView.LOGIN); 
   const [activeTab, setActiveTab] = useState<MainAppTab>(MainAppTab.HOME);
@@ -76,10 +80,6 @@ const App: React.FC = () => {
   
   const [signupSuccessMessage, setSignupSuccessMessage] = useState<string | null>(null);
   const [error, setError] = useState<string | null>(null);
-
-  const [currentUser, setCurrentUser] = useState<UserProfile | null>(null);
-  const [firebaseUser, setFirebaseUser] = useState<FirebaseUser | null>(null); 
-  const [isLoadingAuth, setIsLoadingAuth] = useState(true); 
   
   const appVersion = "1.5.5.1"; 
 
@@ -94,6 +94,8 @@ const App: React.FC = () => {
   const [chatConversations, setChatConversations] = useState<ChatConversation[]>([]);
   
   const [posts, setPosts] = useState<Post[]>([]);
+  
+  // Local state for optimistic UI, but synced with Context
   const [likedPostIds, setLikedPostIds] = useState<Set<string>>(new Set());
   const [likedCommentIds, setLikedCommentIds] = useState<Set<string>>(new Set()); 
   
@@ -109,12 +111,13 @@ const App: React.FC = () => {
     return window.matchMedia('(prefers-color-scheme: dark)').matches ? 'dark' : 'light';
   });
 
-  const [notificationPreferences, setNotificationPreferences] = useState<NotificationPreferences>({
+  // Helper to safely get preferences
+  const notificationPreferences = user?.notificationPreferences || {
     newAnnouncements: true,
     chatMentions: true,
     eventReminders: true,
     promotionalUpdates: false,
-  });
+  };
 
   // --- Helper: Popup Messages ---
   const addPopupMessage = useCallback((message: string, type: PopupMessage['type']) => {
@@ -125,7 +128,41 @@ const App: React.FC = () => {
     }, 3000);
   }, []);
 
-  // --- Effect: Fetch Initial Data ---
+  // --- Effect: Sync User Data from Context ---
+  useEffect(() => {
+    if (user) {
+      // 1. Sync Liked Posts/Comments for local UI
+      setLikedPostIds(new Set(user.likedPostIds || []));
+      setLikedCommentIds(new Set(user.likedCommentIds || []));
+
+      // 2. Fetch Notifications (Subcollection - must be fetched manually as it's not in User Object)
+      const fetchNotifications = async () => {
+        try {
+          const notificationsQuery = query(collection(db, "users", user.id, "notifications"), orderBy("timestamp", "desc")); 
+          const notificationsSnapshot = await getDocs(notificationsQuery);
+          setNotifications(notificationsSnapshot.docs.map(d => ({
+              id: d.id, 
+              ...d.data(), 
+              timestamp: (d.data().timestamp as Timestamp).toDate() 
+          } as Notification)));
+        } catch (e) {
+          console.error("Error fetching notifications", e);
+        }
+      };
+      fetchNotifications();
+
+      // 3. Navigation Logic (Only redirect to main if we are currently in Login/Signup)
+      if (currentView === AppView.LOGIN || currentView === AppView.SIGNUP) {
+        setCurrentView(AppView.MAIN);
+      }
+    } else if (!loading && !user) {
+       // If not loading and no user, force login
+       setCurrentView(AppView.LOGIN);
+    }
+  }, [user, loading, currentView]); // Removed dependencies that cause loops
+
+
+  // --- Effect: Fetch Content Data ---
   useEffect(() => {
     const fetchProducts = async () => {
         try {
@@ -135,7 +172,6 @@ const App: React.FC = () => {
                 const data = doc.data();
                 let price = parseFloat(data.price);
                 if (isNaN(price)) {
-                    console.warn(`Product ${doc.id} has invalid price. Defaulting to 0.`);
                     price = 0;
                 }
                 return { id: doc.id, ...data, price } as Product;
@@ -164,7 +200,7 @@ const App: React.FC = () => {
                 fetchedPosts.push({ 
                     id: docSnap.id, 
                     ...data, 
-                    // @ts-ignore: Ensuring type compatibility if interface changed
+                    // @ts-ignore
                     timestamp: dateStr, 
                     comments: data.comments || [] 
                 } as Post);
@@ -207,13 +243,10 @@ const App: React.FC = () => {
   const handleLogout = useCallback(async () => {
     try {
       await signOut(auth);
-      setCurrentUser(null);
-      setFirebaseUser(null);
+      // State clearing is handled by the Context + useEffect, but we reset UI specific things here
       setActiveTab(MainAppTab.HOME);
       setIsSidebarOpen(false);
       setCartItems([]); 
-      setLikedPostIds(new Set()); 
-      setLikedCommentIds(new Set());
       setCurrentView(AppView.LOGIN);
       addPopupMessage("Logged out successfully.", "info");
     } catch (error) {
@@ -221,56 +254,6 @@ const App: React.FC = () => {
       addPopupMessage("Failed to logout.", "error");
     }
   }, [addPopupMessage]);
-
-
-  useEffect(() => {
-    const unsubscribe = onAuthStateChanged(auth, async (user) => {
-      setFirebaseUser(user);
-      if (user) {
-        const userDocRef = doc(db, "users", user.uid);
-        try {
-            const userDocSnap = await getDoc(userDocRef);
-            if (userDocSnap.exists()) {
-              const userData = userDocSnap.data() as UserProfile;
-              setCurrentUser({
-                ...userData,
-                orders: userData.orders || [], 
-              });
-              
-              if(userData.notificationPreferences) {
-                  setNotificationPreferences(userData.notificationPreferences);
-              }
-
-              const notificationsQuery = query(collection(db, "users", user.uid, "notifications"), orderBy("timestamp", "desc")); 
-              const notificationsSnapshot = await getDocs(notificationsQuery);
-              setNotifications(notificationsSnapshot.docs.map(d => ({
-                  id: d.id, 
-                  ...d.data(), 
-                  timestamp: (d.data().timestamp as Timestamp).toDate() 
-              } as Notification)));
-
-              setLikedPostIds(new Set(userData.likedPostIds || [])); 
-              setLikedCommentIds(new Set(userData.likedCommentIds || []));
-
-            } else {
-              console.error("User profile not found in Firestore");
-              handleLogout();
-            }
-        } catch (e) {
-            console.error("Error fetching user profile:", e);
-            addPopupMessage("Error loading user profile.", "error");
-            setCurrentUser(null); 
-        }
-        setCurrentView(AppView.MAIN);
-      } else {
-        setCurrentUser(null);
-        setCurrentView(AppView.LOGIN);
-      }
-      setIsLoadingAuth(false);
-    });
-    return () => unsubscribe();
-  }, [addPopupMessage, handleLogout]); 
-
 
   useEffect(() => {
     const root = document.documentElement;
@@ -306,7 +289,7 @@ const App: React.FC = () => {
       };
       
       await setDoc(doc(db, "users", fUser.uid), newUserProfile);
-      
+      // Context will pick up the Auth change automatically
       setSignupSuccessMessage("Signup successful! Please login.");
       setCurrentView(AppView.LOGIN); 
       return true;
@@ -323,6 +306,7 @@ const App: React.FC = () => {
     setError(null); setSignupSuccessMessage(null);
     try {
       await signInWithEmailAndPassword(auth, emailToLogin, passwordToLogin);
+      // Context handles the rest
       return true;
     } catch (error: any) {
       console.error("Firebase Login Error:", error);
@@ -394,15 +378,15 @@ const App: React.FC = () => {
   }, []);
 
    const handleCreatePost = useCallback(async (title: string, content: string, imageUrl?: string) => {
-    if (!firebaseUser || !currentUser) {
+    if (!firebaseUser || !user) {
       addPopupMessage("You must be logged in to create a post.", "error");
       return;
     }
     try {
       const newPostData: Omit<Post, 'id' | 'timestamp' | 'comments'> = {
         authorId: firebaseUser.uid,
-        authorName: currentUser.name,
-        authorAvatarUrl: currentUser.avatarUrl || `https://ui-avatars.com/api/?name=${encodeURIComponent(currentUser.name)}&background=random`,
+        authorName: user.name,
+        authorAvatarUrl: user.avatarUrl || `https://ui-avatars.com/api/?name=${encodeURIComponent(user.name)}&background=random`,
         title,
         content,
         upvotes: 0,
@@ -434,7 +418,7 @@ const App: React.FC = () => {
       console.error("Error creating post: ", e);
       addPopupMessage("Failed to create post.", "error");
     }
-  }, [firebaseUser, currentUser, addPopupMessage, handleCloseModal]);
+  }, [firebaseUser, user, addPopupMessage, handleCloseModal]);
 
 
   const handleAddNewProduct = useCallback(async (productData: Omit<Product, 'id' | 'imageUrl'>, imageBase64?: string) => {
@@ -446,7 +430,6 @@ const App: React.FC = () => {
     try {
         if (imageBase64) {
             const imageName = `${Date.now()}_product_image`;
-            // v9 Syntax
             const imageRef = ref(storage, `product_images/${imageName}`);
             await uploadString(imageRef, imageBase64, 'data_url');
             uploadedImageUrl = await getDownloadURL(imageRef);
@@ -478,23 +461,25 @@ const App: React.FC = () => {
     try {
       const userDocRef = doc(db, "users", firebaseUser.uid);
       await updateDoc(userDocRef, updatedData);
-      setCurrentUser(prev => prev ? { ...prev, ...updatedData } : null);
+      
+      // Update global context
+      refreshProfile();
       addPopupMessage("Profile updated!", "success");
     } catch (error) {
       addPopupMessage("Failed to update profile.", "error");
     }
-  }, [firebaseUser, addPopupMessage]);
+  }, [firebaseUser, refreshProfile, addPopupMessage]);
 
   const handleUpdateNotificationPreferences = useCallback(async (updatedPrefs: Partial<NotificationPreferences>) => {
     if (!firebaseUser) return;
     try {
         const userDocRef = doc(db, "users", firebaseUser.uid);
         await updateDoc(userDocRef, { notificationPreferences: updatedPrefs });
-        setNotificationPreferences(prev => ({ ...prev, ...updatedPrefs }));
+        refreshProfile(); 
     } catch (error) {
         addPopupMessage("Failed to save settings.", "error");
     }
-  }, [firebaseUser, addPopupMessage]);
+  }, [firebaseUser, refreshProfile, addPopupMessage]);
 
  const handleChangePasswordAttempt = useCallback(async (oldPasswordPlain: string, newPasswordPlain: string): Promise<boolean> => {
     if (!firebaseUser || !firebaseUser.email) return false;
@@ -569,23 +554,28 @@ const App: React.FC = () => {
             upvotes: increment(hasLiked ? -1 : 1)
         });
 
+        // Optimistic Update for UI speed
         setLikedPostIds(prev => {
             const newSet = new Set(prev);
             if (hasLiked) newSet.delete(postId);
             else newSet.add(postId);
             return newSet;
         });
+
+        // Sync Global State
+        refreshProfile();
+
         setPosts(prevPosts => prevPosts.map(p => 
             p.id === postId ? { ...p, upvotes: p.upvotes + (hasLiked ? -1 : 1) } : p
         ));
     } catch (error) {
         addPopupMessage("Failed to update like status.", "error");
     }
-  }, [firebaseUser, likedPostIds, addPopupMessage]);
+  }, [firebaseUser, likedPostIds, addPopupMessage, refreshProfile]);
 
 
   const handleConfirmOrderPayment = useCallback(async (deliveryAddress: Address, method: string) => {
-    if (!firebaseUser || !currentUser || cartItems.length === 0) {
+    if (!firebaseUser || !user || cartItems.length === 0) {
         addPopupMessage("Error processing order.", "error");
         return;
     }
@@ -609,9 +599,10 @@ const App: React.FC = () => {
             orders: arrayUnion({ ...newOrder, id: orderDocRef.id }) 
         });
         
-        const confirmedOrder = { ...newOrder, id: orderDocRef.id };
-        setCurrentUser(prev => prev ? {...prev, orders: [...(prev.orders || []), confirmedOrder]} : null);
+        // Refresh global user state to get new order list
+        refreshProfile();
 
+        const confirmedOrder = { ...newOrder, id: orderDocRef.id };
         setCartItems([]); 
         handleOpenModal(ModalType.ORDER_SUCCESS_MODAL, { order: confirmedOrder });
         setCurrentView(AppView.MAIN); 
@@ -620,7 +611,7 @@ const App: React.FC = () => {
         console.error("Error placing order: ", e);
         addPopupMessage("Failed to place order.", "error");
     }
-  }, [firebaseUser, currentUser, cartItems, addPopupMessage, handleOpenModal]);
+  }, [firebaseUser, user, cartItems, addPopupMessage, handleOpenModal, refreshProfile]);
 
 
   const renderModalContent = () => {
@@ -653,12 +644,12 @@ const App: React.FC = () => {
             }
         }} />;
       case ModalType.OFFLINE_DOWNLOADS_LIST:
-        return <OfflineDownloads items={downloadableContent} user={currentUser} onDownload={(item) => {
+        return <OfflineDownloads items={downloadableContent} user={user} onDownload={(item) => {
             if (!firebaseUser) { addPopupMessage("Login to download.", "error"); return; }
             const userDocRef = doc(db, "users", firebaseUser.uid);
             updateDoc(userDocRef, { downloadedItemIds: arrayUnion(item.id) })
               .then(() => {
-                setCurrentUser(prev => prev ? {...prev, downloadedItemIds: [...(prev.downloadedItemIds || []), item.id]} : null);
+                refreshProfile();
                 addPopupMessage(`${item.name} downloaded!`, 'success');
               })
               .catch(e => { console.error(e); addPopupMessage("Download failed.", "error"); });
@@ -726,7 +717,7 @@ const App: React.FC = () => {
 
 
   const renderContent = () => {
-    if (isLoadingAuth) {
+    if (loading) {
         return <div className="flex justify-center items-center h-screen bg-gray-100 dark:bg-gray-900"><svg className="animate-spin h-10 w-10 text-indigo-600" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24"><circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4"></circle><path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"></path></svg></div>;
     }
     switch (currentView) {
@@ -743,7 +734,7 @@ const App: React.FC = () => {
         return <ChatDetail
                     conversationId={activeModalData?.conversationId} 
                     initialConversation={selectedConversation} 
-                    currentUser={currentUser!}
+                    currentUser={user!}
                     onBack={handleBackToMain} 
                     onSendMessage={(chatId, message) => {
                         setChatConversations(prev => prev.map(conv => {
@@ -769,14 +760,14 @@ const App: React.FC = () => {
         const selectedPost = posts.find(p => p.id === activeModalData?.postId);
         return <PostDetail
                     post={selectedPost} 
-                    currentUser={currentUser} 
+                    currentUser={user} 
                     onBack={handleBackToMain} 
                     onAddComment={() => {}} 
                     onToggleLikeComment={() => {}} 
                     likedCommentIds={likedCommentIds} 
                 />;
       case AppView.PAYMENT_DETAILS:
-        return <PaymentDetails currentUser={currentUser} cartItems={cartItems} onNavigate={onNavigate} onBack={() => setCurrentView(AppView.CART)} onUpdateUserProfile={handleUpdateProfile}/>;
+        return <PaymentDetails currentUser={user} cartItems={cartItems} onNavigate={onNavigate} onBack={() => setCurrentView(AppView.CART)} onUpdateUserProfile={handleUpdateProfile}/>;
       case AppView.UPI_PAYMENT:
         if (!activeModalData || typeof activeModalData.totalAmount !== 'number' || isNaN(activeModalData.totalAmount)) {
           console.error("Invalid data for UPI Payment screen:", activeModalData);
@@ -793,12 +784,12 @@ const App: React.FC = () => {
                />;
       case AppView.MAIN:
       default:
-        if (!currentUser) return <Login onLoginAttempt={handleLoginAttempt} onNavigateToSignup={navigateToSignup} onOpenModal={handleOpenModal} errorMessage={error} />;
+        if (!user) return <Login onLoginAttempt={handleLoginAttempt} onNavigateToSignup={navigateToSignup} onOpenModal={handleOpenModal} errorMessage={error} />;
         return (
           <div className="h-screen w-screen flex flex-col">
             <TopBar 
               title="Closure" 
-              userName={currentUser.name} 
+              userName={user.name} 
               showMenuButton={true}
               onMenuClick={() => setIsSidebarOpen(true)}
               notifications={notifications}
@@ -810,17 +801,17 @@ const App: React.FC = () => {
             <Sidebar 
               isOpen={isSidebarOpen} 
               onClose={() => setIsSidebarOpen(false)} 
-              user={currentUser} 
+              user={user} 
               onNavigateToSettings={handleNavigateToSettings}
               onOpenModal={handleOpenModal}
               onSwitchToProfileTab={() => setActiveTab(MainAppTab.PROFILE)}
             />
             <main className="flex-grow overflow-y-auto">
-              {activeTab === MainAppTab.HOME && <Home onOpenModal={handleOpenModal} announcements={announcements} events={events} userName={currentUser.name} />}
+              {activeTab === MainAppTab.HOME && <Home onOpenModal={handleOpenModal} announcements={announcements} events={events} userName={user.name} />}
               {activeTab === MainAppTab.STORE && <Store products={products} onAddToCart={handleAddToCart} onOpenModal={handleOpenModal} />}
-              {activeTab === MainAppTab.COMMUNITY && <Community posts={posts} currentUser={currentUser} onNavigateToPostDetail={handleNavigateToPostDetail} likedPostIds={likedPostIds} onToggleLike={handleToggleLikePost} onOpenModal={handleOpenModal} />}
+              {activeTab === MainAppTab.COMMUNITY && <Community posts={posts} currentUser={user} onNavigateToPostDetail={handleNavigateToPostDetail} likedPostIds={likedPostIds} onToggleLike={handleToggleLikePost} onOpenModal={handleOpenModal} />}
               {activeTab === MainAppTab.CHATS && <Chats conversations={chatConversations} onNavigate={onNavigate} />}
-              {activeTab === MainAppTab.PROFILE && <Profile user={currentUser} onLogout={handleLogout} onUpdateProfile={handleUpdateProfile}/>}
+              {activeTab === MainAppTab.PROFILE && <Profile user={user} onLogout={handleLogout} onUpdateProfile={handleUpdateProfile}/>}
             </main>
             <BottomNav activeTab={activeTab} onTabChange={setActiveTab} />
           </div>

@@ -2,7 +2,6 @@ import React, { useState, useEffect } from 'react';
 import { UPIPaymentProps } from '../../types'; 
 import TopBar from '../layout/TopBar';
 
-
 const UPIPayment: React.FC<UPIPaymentProps> = ({ 
   deliveryAddress, 
   paymentMethod, 
@@ -15,6 +14,7 @@ const UPIPayment: React.FC<UPIPaymentProps> = ({
   const [isLoading, setIsLoading] = useState(false);
 
   useEffect(() => {
+    // In a real app, these values would come from config or backend
     const merchantVpa = 'merchant@okbank'; 
     const merchantName = 'Closure Store';
     const transactionRef = `TID${Date.now()}`;
@@ -23,15 +23,18 @@ const UPIPayment: React.FC<UPIPaymentProps> = ({
     
     setUpiDeepLink(link);
 
+    // Using a public QR generator API for demo purposes
     setQrCodeUrl(`https://api.qrserver.com/v1/create-qr-code/?size=200x200&data=${encodeURIComponent(link)}`);
   }, [totalAmount]);
 
   const handleOpenApp = () => {
+      // Intent for mobile devices
       window.open(upiDeepLink, '_system');
   };
 
   const handleConfirm = async () => {
     setIsLoading(true);
+    // Simulate payment verification delay
     await new Promise(resolve => setTimeout(resolve, 2000));
     
     onConfirmPayment(deliveryAddress, paymentMethod);
@@ -39,19 +42,23 @@ const UPIPayment: React.FC<UPIPaymentProps> = ({
   };
 
   return (
-    <div className="h-screen w-screen flex flex-col bg-gray-100 dark:bg-gray-900">
+    <div className="h-screen w-screen flex flex-col bg-gray-100 dark:bg-gray-900 transition-colors duration-200">
       <TopBar title="UPI Payment" onBackClick={onBack} showBackButton={true} showMenuButton={false} />
       
       <div className="flex-grow flex flex-col items-center justify-center p-6 text-center space-y-6">
-        <div className="bg-white dark:bg-gray-800 p-6 rounded-xl shadow-xl w-full max-w-sm">
+        <div className="bg-white dark:bg-gray-800 p-6 rounded-xl shadow-xl w-full max-w-sm border border-gray-100 dark:border-gray-700">
             <h2 className="text-xl font-semibold text-gray-800 dark:text-gray-100 mb-2">Pay via UPI</h2>
             <p className="text-3xl font-bold text-indigo-600 dark:text-indigo-400 mb-6">₹{totalAmount.toFixed(2)}</p>
             
             {/* QR Code Section */}
             {qrCodeUrl ? (
                 <div className="mb-6 relative group">
-                    <img src={qrCodeUrl} alt="UPI QR Code" className="w-48 h-48 mx-auto border-2 border-gray-100 dark:border-gray-700 rounded-lg p-2 bg-white shadow-inner" />
-                    <p className="text-xs text-gray-500 mt-2">Scan with any UPI App</p>
+                    <img 
+                        src={qrCodeUrl} 
+                        alt="UPI QR Code" 
+                        className="w-48 h-48 mx-auto border-2 border-gray-100 dark:border-gray-700 rounded-lg p-2 bg-white shadow-inner" 
+                    />
+                    <p className="text-xs text-gray-500 dark:text-gray-400 mt-2">Scan with any UPI App</p>
                 </div>
             ) : (
                 <div className="w-48 h-48 mx-auto border border-gray-300 dark:border-gray-600 rounded-lg flex items-center justify-center bg-gray-50 dark:bg-gray-700">
@@ -59,7 +66,7 @@ const UPIPayment: React.FC<UPIPaymentProps> = ({
                 </div>
             )}
 
-            {/* Mobile Deep Link Button (Better UX for Mobile) */}
+            {/* Mobile Deep Link Button */}
             <button 
                 onClick={handleOpenApp}
                 className="mb-4 text-indigo-600 dark:text-indigo-400 text-sm font-medium hover:bg-indigo-50 dark:hover:bg-indigo-900/30 py-2 px-4 rounded-full transition-colors flex items-center justify-center w-full border border-indigo-200 dark:border-indigo-800"
@@ -68,7 +75,7 @@ const UPIPayment: React.FC<UPIPaymentProps> = ({
                 Tap to Pay on Phone
             </button>
 
-            <div className="text-left bg-blue-50 dark:bg-blue-900/20 p-3 rounded-lg border border-blue-100 dark:border-blue-800">
+            <div className="text-left bg-blue-50 dark:bg-blue-900/20 p-3 rounded-lg border border-blue-100 dark:border-blue-800/50">
                 <p className="text-xs text-blue-700 dark:text-blue-300 leading-relaxed">
                     <strong>Step 1:</strong> Scan QR or tap the button above to pay.<br/>
                     <strong>Step 2:</strong> Come back here and click "I have Paid".

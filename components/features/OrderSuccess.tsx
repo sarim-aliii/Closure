@@ -1,8 +1,7 @@
 import React from 'react';
 import { OrderSuccessProps } from '../../types';
-import CheckCircle from '../icons/CheckCircle'
-import Share from '../icons/Share'
-
+import CheckCircle from '../icons/CheckCircle';
+import Share from '../icons/Share';
 
 const OrderSuccess: React.FC<OrderSuccessProps> = ({ order, onViewOrders, onContinueShopping, onClose }) => {
   if (!order) {
@@ -36,31 +35,38 @@ const OrderSuccess: React.FC<OrderSuccessProps> = ({ order, onViewOrders, onCont
     }
   };
 
+  // Helper to format date safely
+  const formattedDate = orderDate instanceof Date 
+    ? orderDate.toLocaleString() 
+    // @ts-ignore - Handle firestore timestamp if it leaks through
+    : orderDate?.toDate ? orderDate.toDate().toLocaleString() 
+    : new Date().toLocaleString();
+
   return (
     <div className="p-2 sm:p-4 text-center">
       <CheckCircle className="w-12 h-12 sm:w-16 sm:h-16 text-green-500 mx-auto mb-3" />
       <h3 className="text-lg sm:text-xl font-semibold text-gray-800 dark:text-gray-100 mb-1">Order Placed Successfully!</h3>
       <p className="text-xs sm:text-sm text-gray-600 dark:text-gray-300 mb-2">Thank you for your purchase with Closure.</p>
       
-      {/* Share Button (Top Right Absolute or Inline) */}
+      {/* Share Button */}
       <div className="flex justify-center mb-4">
           <button 
             onClick={handleShare}
-            className="flex items-center text-indigo-600 dark:text-indigo-400 text-xs font-medium hover:underline"
+            className="flex items-center text-indigo-600 dark:text-indigo-400 text-xs font-medium hover:underline focus:outline-none"
           >
             <Share className="w-4 h-4 mr-1" />
             Share Receipt
           </button>
       </div>
 
-      <p className="text-xs sm:text-sm text-gray-600 dark:text-gray-300 mb-4">
+      <p className="text-xs sm:text-sm text-gray-600 dark:text-gray-400 mb-4">
         Order ID: <span className="font-medium text-indigo-600 dark:text-indigo-400">{orderId}</span>
       </p>
 
       {/* Transaction Details Section */}
-      <div className="bg-gray-50 dark:bg-gray-700 p-3 sm:p-4 rounded-lg border border-gray-200 dark:border-gray-600 text-left text-xs sm:text-sm mb-5">
-        <h4 className="font-semibold text-gray-700 dark:text-gray-200 mb-2 text-sm sm:text-base text-center">Transaction Details</h4>
-        <div className="space-y-1.5">
+      <div className="bg-gray-50 dark:bg-gray-700/50 p-3 sm:p-4 rounded-lg border border-gray-200 dark:border-gray-600 text-left text-xs sm:text-sm mb-5">
+        <h4 className="font-semibold text-gray-700 dark:text-gray-200 mb-3 text-sm sm:text-base text-center border-b border-gray-200 dark:border-gray-600 pb-2">Transaction Details</h4>
+        <div className="space-y-2">
           <div className="flex justify-between">
             <span className="text-gray-500 dark:text-gray-400">Status:</span>
             <span className="font-medium text-green-600 dark:text-green-400">Payment Successful</span>
@@ -71,12 +77,12 @@ const OrderSuccess: React.FC<OrderSuccessProps> = ({ order, onViewOrders, onCont
           </div>
           <div className="flex justify-between">
             <span className="text-gray-500 dark:text-gray-400">Transaction ID:</span>
-            <span className="font-medium text-gray-800 dark:text-gray-100 truncate">{transactionId}</span>
+            <span className="font-medium text-gray-800 dark:text-gray-100 truncate max-w-[150px] text-right">{transactionId}</span>
           </div>
           {paymentMethod === 'UPI' && paymentDetails?.upiTransactionId && (
             <div className="flex justify-between">
               <span className="text-gray-500 dark:text-gray-400">UPI Ref:</span>
-              <span className="font-medium text-gray-800 dark:text-gray-100 truncate">{paymentDetails.upiTransactionId}</span>
+              <span className="font-medium text-gray-800 dark:text-gray-100 truncate max-w-[150px] text-right">{paymentDetails.upiTransactionId}</span>
             </div>
           )}
           <div className="flex justify-between">
@@ -85,23 +91,23 @@ const OrderSuccess: React.FC<OrderSuccessProps> = ({ order, onViewOrders, onCont
           </div>
            <div className="flex justify-between">
             <span className="text-gray-500 dark:text-gray-400">Date:</span>
-            <span className="font-medium text-gray-800 dark:text-gray-100">
-                {orderDate instanceof Date ? orderDate.toLocaleString() : new Date().toLocaleString()}
+            <span className="font-medium text-gray-800 dark:text-gray-100 text-right">
+                {formattedDate}
             </span>
           </div>
         </div>
       </div>
 
-      <div className="space-y-2.5 mt-4">
+      <div className="space-y-3 mt-4">
         <button
           onClick={() => { onViewOrders(); onClose(); }}
-          className="w-full bg-indigo-600 text-white py-2 px-4 rounded-lg font-semibold hover:bg-indigo-700 dark:hover:bg-indigo-500 transition-colors text-sm"
+          className="w-full bg-indigo-600 text-white py-2.5 px-4 rounded-lg font-semibold hover:bg-indigo-700 dark:hover:bg-indigo-500 transition-colors text-sm shadow-sm"
         >
           View My Orders
         </button>
         <button
           onClick={() => { onContinueShopping(); onClose(); }}
-          className="w-full bg-gray-100 dark:bg-gray-600 text-gray-700 dark:text-gray-200 py-2 px-4 rounded-lg font-semibold hover:bg-gray-200 dark:hover:bg-gray-500 transition-colors text-sm border border-gray-300 dark:border-gray-500"
+          className="w-full bg-white dark:bg-gray-700 text-gray-700 dark:text-gray-200 py-2.5 px-4 rounded-lg font-semibold hover:bg-gray-50 dark:hover:bg-gray-600 transition-colors text-sm border border-gray-300 dark:border-gray-600"
         >
           Continue Shopping
         </button>

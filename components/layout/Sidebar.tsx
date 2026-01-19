@@ -1,19 +1,26 @@
 import React from 'react';
 import UserCircle from '../icons/UserCircle'; 
 import { SidebarProps, ModalType } from '../../types';
-import Download from '../icons/Download'
-import Folder from '../icons/Folder'
-import Testimonial from '../icons/Testimonial'
-import EditProfile from '../icons/EditProfile'
-import Settings from '../icons/Settings'
-import Help from '../icons/Help'
-import Privacy from '../icons/Privacy'
-import Share from '../icons/Share'
+import Download from '../icons/Download';
+import Folder from '../icons/Folder';
+import Testimonial from '../icons/Testimonial';
+import EditProfile from '../icons/EditProfile';
+import Settings from '../icons/Settings';
+import Help from '../icons/Help';
+import Privacy from '../icons/Privacy';
+import Share from '../icons/Share';
+import { useUser } from '../../contexts/UserContext';
 
 
+const Sidebar: React.FC<SidebarProps> = ({ 
+  isOpen, 
+  onClose, 
+  onNavigateToSettings, 
+  onOpenModal, 
+  onSwitchToProfileTab 
+}) => {
+  const { user } = useUser(); 
 
-
-const Sidebar: React.FC<SidebarProps> = ({ isOpen, onClose, user, onNavigateToSettings, onOpenModal, onSwitchToProfileTab }) => {
   const menuItems = [
     { label: 'Offline Downloads', icon: Download, badge: false, action: () => { onOpenModal(ModalType.OFFLINE_DOWNLOADS_LIST); onClose(); } },
     { label: 'Free Material', icon: Folder, badge: false, action: () => { onOpenModal(ModalType.FREE_MATERIAL_LIST); onClose(); } },
@@ -39,6 +46,8 @@ const Sidebar: React.FC<SidebarProps> = ({ isOpen, onClose, user, onNavigateToSe
         console.log("Error sharing", error);
     }
   };
+
+  if (!user) return null;
 
   return (
     <>

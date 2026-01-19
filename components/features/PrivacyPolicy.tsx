@@ -1,11 +1,11 @@
 import React from 'react';
 
-
-interface PrivacyPolicy {
+// Renamed interface to avoid conflict with component name
+interface PrivacyPolicyProps {
   onClose: () => void;
 }
 
-const PrivacyPolicy: React.FC<PrivacyPolicy> = ({ onClose }) => {
+const PrivacyPolicy: React.FC<PrivacyPolicyProps> = ({ onClose }) => {
   return (
     <div className="p-1 space-y-3 text-sm text-gray-600 dark:text-gray-300">
       <h4 className="text-md font-semibold text-gray-800 dark:text-gray-100">Our Commitment to Privacy</h4>

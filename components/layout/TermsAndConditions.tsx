@@ -1,11 +1,11 @@
 import React from 'react';
 
 
-interface TermsAndConditions {
+interface TermsAndConditionsProps {
   onClose: () => void;
 }
 
-const TermsAndConditions: React.FC<TermsAndConditions> = ({ onClose }) => {
+const TermsAndConditions: React.FC<TermsAndConditionsProps> = ({ onClose }) => {
   return (
     <div className="p-1 space-y-4 text-sm text-gray-700 dark:text-gray-300">
       <h4 className="text-md font-semibold text-gray-800 dark:text-gray-100">Terms and Conditions</h4>

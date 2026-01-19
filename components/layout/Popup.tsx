@@ -1,17 +1,17 @@
 import React, { useEffect, useState } from 'react';
 import { PopupProps } from '../../types';
-import CheckCircle from '../icons/CheckCircle'
-import XCircle from '../icons/XCircle'
-import InfoField from '../icons/InfoField'
-
-
+import CheckCircle from '../icons/CheckCircle';
+import XCircle from '../icons/XCircle';
+import InfoField from '../icons/InfoField';
 
 const Popup: React.FC<PopupProps> = ({ message, type, onClose, duration = 3000 }) => {
   const [isVisible, setIsVisible] = useState(false);
 
   useEffect(() => {
+    // Trigger entry animation
     const enterTimer = setTimeout(() => setIsVisible(true), 10);
 
+    // Trigger exit animation and close
     const exitTimer = setTimeout(() => {
         setIsVisible(false);
         setTimeout(onClose, 300); 
@@ -32,14 +32,15 @@ const Popup: React.FC<PopupProps> = ({ message, type, onClose, duration = 3000 }
   const Icon = type === 'success' ? CheckCircle : type === 'error' ? XCircle : InfoField;
 
   return (
+    // Removed 'fixed' positioning so it stacks correctly within the parent container
     <div 
-        className={`fixed top-4 right-4 z-[100] transform transition-all duration-300 ease-out ${
+        className={`transform transition-all duration-300 ease-out mb-2 ${
             isVisible ? 'translate-x-0 opacity-100' : 'translate-x-full opacity-0'
         }`}
     >
-        <div className={`${typeStyles[type]} flex items-center p-4 rounded-lg shadow-lg border text-white min-w-[300px] max-w-sm`}>
+        <div className={`${typeStyles[type]} flex items-center p-4 rounded-lg shadow-lg border text-white min-w-[300px] max-w-sm pointer-events-auto`}>
             <div className="flex-shrink-0 mr-3">
-                <Icon />
+                <Icon className="w-5 h-5 text-white" />
             </div>
             <div className="flex-grow text-sm font-medium">
                 {message}
