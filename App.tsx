@@ -1,4 +1,5 @@
 import React, { useState, useCallback, useEffect } from 'react';
+import { App as CapacitorApp } from '@capacitor/app';
 
 import { 
   AppView, MainAppTab, UserProfile, ModalType,
@@ -8,7 +9,7 @@ import {
   Post, Address, Order 
 } from './types';
 
-// 1. Context Hook (Assumed path based on setup)
+// 1. Context Hook
 import { useUser } from './contexts/UserContext';
 
 // 2. Auth Components
@@ -57,8 +58,9 @@ import {
   signInWithEmailAndPassword, 
   updatePassword, 
   sendPasswordResetEmail, 
-  reauthenticateWithCredential, 
-  EmailAuthProvider 
+  reauthenticateWithCredential,
+  EmailAuthProvider,
+  deleteUser
 } from "firebase/auth"; 
 import { 
   doc, setDoc, updateDoc, collection, addDoc, 
@@ -70,20 +72,15 @@ import { ref, uploadString, getDownloadURL } from "firebase/storage";
 export type Theme = 'light' | 'dark';
 
 const App: React.FC = () => {
-  // --- Context Hooks ---
   const { user, firebaseUser, loading, refreshProfile } = useUser();
-
-  // --- State Management ---
   const [currentView, setCurrentView] = useState<AppView>(AppView.LOGIN); 
   const [activeTab, setActiveTab] = useState<MainAppTab>(MainAppTab.HOME);
   const [isSidebarOpen, setIsSidebarOpen] = useState(false);
-  
   const [signupSuccessMessage, setSignupSuccessMessage] = useState<string | null>(null);
   const [error, setError] = useState<string | null>(null);
-  
-  const appVersion = "1.5.5.1"; 
 
-  const [products, setProducts] = useState<Product[]>([]); 
+  const appVersion = "1.5.5.1"; 
+  
   const [cartItems, setCartItems] = useState<CartItem[]>([]);
   const [notifications, setNotifications] = useState<Notification[]>([]);
   const [announcements, setAnnouncements] = useState<Announcement[]>([]);
@@ -92,12 +89,6 @@ const App: React.FC = () => {
   const [freeMaterials, setFreeMaterials] = useState<FreeMaterialItem[]>([]);
   const [testimonialsData, setTestimonialsData] = useState<Testimonial[]>([]);
   const [chatConversations, setChatConversations] = useState<ChatConversation[]>([]);
-  
-  const [posts, setPosts] = useState<Post[]>([]);
-  
-  // Local state for optimistic UI, but synced with Context
-  const [likedPostIds, setLikedPostIds] = useState<Set<string>>(new Set());
-  const [likedCommentIds, setLikedCommentIds] = useState<Set<string>>(new Set()); 
   
   const [currentModal, setCurrentModal] = useState<ModalType | null>(null);
   const [activeModalData, setActiveModalData] = useState<any>(null);
@@ -111,7 +102,6 @@ const App: React.FC = () => {
     return window.matchMedia('(prefers-color-scheme: dark)').matches ? 'dark' : 'light';
   });
 
-  // Helper to safely get preferences
   const notificationPreferences = user?.notificationPreferences || {
     newAnnouncements: true,
     chatMentions: true,
@@ -119,7 +109,29 @@ const App: React.FC = () => {
     promotionalUpdates: false,
   };
 
-  // --- Helper: Popup Messages ---
+  useEffect(() => {
+    const setupBackButtonListener = async () => {
+      const handleBackButton = await CapacitorApp.addListener('backButton', ({ canGoBack }) => {
+        if (currentView !== AppView.MAIN && currentView !== AppView.LOGIN) {
+           setCurrentView(AppView.MAIN);
+        } else {
+           CapacitorApp.exitApp();
+        }
+      });
+
+      return () => {
+        handleBackButton.remove();
+      };
+    };
+
+    const cleanupPromise = setupBackButtonListener();
+
+    return () => {
+      cleanupPromise.then(cleanup => cleanup());
+    };
+  }, [currentView]);
+
+
   const addPopupMessage = useCallback((message: string, type: PopupMessage['type']) => {
     const id = String(Date.now());
     setPopupMessages(prev => [...prev, { id, message, type }]);
@@ -128,14 +140,8 @@ const App: React.FC = () => {
     }, 3000);
   }, []);
 
-  // --- Effect: Sync User Data from Context ---
   useEffect(() => {
     if (user) {
-      // 1. Sync Liked Posts/Comments for local UI
-      setLikedPostIds(new Set(user.likedPostIds || []));
-      setLikedCommentIds(new Set(user.likedCommentIds || []));
-
-      // 2. Fetch Notifications (Subcollection - must be fetched manually as it's not in User Object)
       const fetchNotifications = async () => {
         try {
           const notificationsQuery = query(collection(db, "users", user.id, "notifications"), orderBy("timestamp", "desc")); 
@@ -151,71 +157,16 @@ const App: React.FC = () => {
       };
       fetchNotifications();
 
-      // 3. Navigation Logic (Only redirect to main if we are currently in Login/Signup)
       if (currentView === AppView.LOGIN || currentView === AppView.SIGNUP) {
         setCurrentView(AppView.MAIN);
       }
     } else if (!loading && !user) {
-       // If not loading and no user, force login
        setCurrentView(AppView.LOGIN);
     }
-  }, [user, loading, currentView]); // Removed dependencies that cause loops
+  }, [user, loading, currentView]);
 
 
-  // --- Effect: Fetch Content Data ---
   useEffect(() => {
-    const fetchProducts = async () => {
-        try {
-            const productsCol = collection(db, 'products');
-            const productSnapshot = await getDocs(productsCol);
-            const productList = productSnapshot.docs.map(doc => {
-                const data = doc.data();
-                let price = parseFloat(data.price);
-                if (isNaN(price)) {
-                    price = 0;
-                }
-                return { id: doc.id, ...data, price } as Product;
-            });
-            setProducts(productList);
-        } catch (e) {
-            console.error("Error fetching products: ", e);
-            addPopupMessage("Could not load products.", "error");
-        }
-    };
-
-    const fetchPosts = async () => {
-        try {
-            const postsQuery = query(collection(db, "posts"), orderBy("timestamp", "desc"));
-            const querySnapshot = await getDocs(postsQuery);
-            const fetchedPosts: Post[] = [];
-            querySnapshot.forEach((docSnap) => { 
-                const data = docSnap.data();
-                let dateStr = new Date().toISOString();
-                if (data.timestamp && (data.timestamp as Timestamp).toDate) {
-                    dateStr = (data.timestamp as Timestamp).toDate().toISOString();
-                } else if (data.timestamp instanceof Date) {
-                    dateStr = data.timestamp.toISOString();
-                }
-
-                fetchedPosts.push({ 
-                    id: docSnap.id, 
-                    ...data, 
-                    // @ts-ignore
-                    timestamp: dateStr, 
-                    comments: data.comments || [] 
-                } as Post);
-            });
-            setPosts(fetchedPosts);
-        } catch (e) {
-            console.error("Error fetching posts: ", e);
-            addPopupMessage("Could not load posts.", "error");
-        }
-    };
-
-    fetchProducts();
-    fetchPosts();
-    
-    // Mock Data
     setAnnouncements([
       { id: 'anno1', title: 'Mid-term Exams Schedule Released', content: 'The schedule for the upcoming mid-term examinations has been released.', fullContent: 'Detailed content here...', date: 'Oct 26, 2023' },
     ]);
@@ -243,7 +194,6 @@ const App: React.FC = () => {
   const handleLogout = useCallback(async () => {
     try {
       await signOut(auth);
-      // State clearing is handled by the Context + useEffect, but we reset UI specific things here
       setActiveTab(MainAppTab.HOME);
       setIsSidebarOpen(false);
       setCartItems([]); 
@@ -271,6 +221,7 @@ const App: React.FC = () => {
   const handleSignupAttempt = useCallback(async (name: string, email: string, passwordPlain: string): Promise<boolean> => {
     setError(null);
     try {
+      // 1. Create Auth User
       const userCredential = await createUserWithEmailAndPassword(auth, email, passwordPlain);
       const fUser = userCredential.user;
       
@@ -288,11 +239,22 @@ const App: React.FC = () => {
         notificationPreferences: { newAnnouncements: true, chatMentions: true, eventReminders: true, promotionalUpdates: false },
       };
       
-      await setDoc(doc(db, "users", fUser.uid), newUserProfile);
-      // Context will pick up the Auth change automatically
-      setSignupSuccessMessage("Signup successful! Please login.");
-      setCurrentView(AppView.LOGIN); 
-      return true;
+      try {
+        await setDoc(doc(db, "users", fUser.uid), newUserProfile);
+        setSignupSuccessMessage("Signup successful! Please login.");
+        setCurrentView(AppView.LOGIN); 
+        return true;
+      } catch (firestoreError) {
+        console.error("Firestore Profile Creation Error:", firestoreError);
+        try {
+            await deleteUser(fUser);
+            setError("Failed to create profile data. Please try again.");
+        } catch (cleanupError) {
+            console.error("CRITICAL: Failed to cleanup auth user:", cleanupError);
+            setError("Account created but profile setup failed. Contact support.");
+        }
+        return false;
+      }
     } catch (error: any) {
       console.error("Firebase Signup Error:", error);
       if (error.code === 'auth/email-already-in-use') setError('This email address is already in use.');
@@ -306,7 +268,6 @@ const App: React.FC = () => {
     setError(null); setSignupSuccessMessage(null);
     try {
       await signInWithEmailAndPassword(auth, emailToLogin, passwordToLogin);
-      // Context handles the rest
       return true;
     } catch (error: any) {
       console.error("Firebase Login Error:", error);
@@ -333,14 +294,17 @@ const App: React.FC = () => {
 
   const handleNavigateToSettings = useCallback(() => setCurrentView(AppView.SETTINGS), []);
   const handleNavigateToCart = useCallback(() => setCurrentView(AppView.CART), []);
+  
   const handleNavigateToChatDetail = useCallback((conversationId: string) => {
     setCurrentView(AppView.CHAT_DETAIL);
     setActiveModalData({ conversationId }); 
   }, []);
-   const handleNavigateToPostDetail = useCallback((postId: string) => {
+  
+  const handleNavigateToPostDetail = useCallback((post: Post) => {
     setCurrentView(AppView.POST_DETAIL);
-    setActiveModalData({ postId }); 
+    setActiveModalData({ post }); 
   }, []);
+
   const handleBackToMain = useCallback(() => setCurrentView(AppView.MAIN), []);
 
   const onNavigate = (view: AppView, data?: any) => {
@@ -348,8 +312,6 @@ const App: React.FC = () => {
     if (data !== undefined) setActiveModalData(data);
     else setActiveModalData(null); 
   };
-
-  // --- Feature Logic ---
 
   const handleAddToCart = useCallback((product: Product) => {
     setCartItems(prevItems => {
@@ -402,16 +364,8 @@ const App: React.FC = () => {
         comments: [], 
       };
 
-      const docRef = await addDoc(collection(db, "posts"), postWithTimestamp);
-      const newPostForState: Post = {
-        ...newPostData,
-        id: docRef.id,
-        // @ts-ignore
-        timestamp: new Date().toISOString(), 
-        comments: [],
-      } as Post;
-
-      setPosts(prevPosts => [newPostForState, ...prevPosts]);
+      await addDoc(collection(db, "posts"), postWithTimestamp);
+      
       addPopupMessage("Post created successfully!", "success");
       handleCloseModal();
     } catch (e) {
@@ -445,8 +399,8 @@ const App: React.FC = () => {
             imageUrl: uploadedImageUrl,
         };
 
-        const docRef = await addDoc(collection(db, "products"), newProduct);
-        setProducts(prevProducts => [{ ...newProduct, id: docRef.id }, ...prevProducts]);
+        await addDoc(collection(db, "products"), newProduct);
+        
         addPopupMessage("Product added!", "success");
         handleCloseModal();
     } catch (error) {
@@ -461,8 +415,6 @@ const App: React.FC = () => {
     try {
       const userDocRef = doc(db, "users", firebaseUser.uid);
       await updateDoc(userDocRef, updatedData);
-      
-      // Update global context
       refreshProfile();
       addPopupMessage("Profile updated!", "success");
     } catch (error) {
@@ -538,13 +490,15 @@ const App: React.FC = () => {
   }, [firebaseUser, notifications, addPopupMessage]);
 
   const handleToggleLikePost = useCallback(async (postId: string) => {
-    if (!firebaseUser) {
+    if (!firebaseUser || !user) {
         addPopupMessage("Please login to like posts.", "error");
         return;
     }
     const userDocRef = doc(db, "users", firebaseUser.uid);
     const postDocRef = doc(db, "posts", postId);
-    const hasLiked = likedPostIds.has(postId);
+    
+    // Use context user data directly
+    const hasLiked = user.likedPostIds?.includes(postId);
 
     try {
         await updateDoc(userDocRef, {
@@ -554,24 +508,12 @@ const App: React.FC = () => {
             upvotes: increment(hasLiked ? -1 : 1)
         });
 
-        // Optimistic Update for UI speed
-        setLikedPostIds(prev => {
-            const newSet = new Set(prev);
-            if (hasLiked) newSet.delete(postId);
-            else newSet.add(postId);
-            return newSet;
-        });
-
         // Sync Global State
         refreshProfile();
-
-        setPosts(prevPosts => prevPosts.map(p => 
-            p.id === postId ? { ...p, upvotes: p.upvotes + (hasLiked ? -1 : 1) } : p
-        ));
     } catch (error) {
         addPopupMessage("Failed to update like status.", "error");
     }
-  }, [firebaseUser, likedPostIds, addPopupMessage, refreshProfile]);
+  }, [firebaseUser, user, addPopupMessage, refreshProfile]);
 
 
   const handleConfirmOrderPayment = useCallback(async (deliveryAddress: Address, method: string) => {
@@ -599,7 +541,6 @@ const App: React.FC = () => {
             orders: arrayUnion({ ...newOrder, id: orderDocRef.id }) 
         });
         
-        // Refresh global user state to get new order list
         refreshProfile();
 
         const confirmedOrder = { ...newOrder, id: orderDocRef.id };
@@ -757,14 +698,13 @@ const App: React.FC = () => {
                     }}
                 />;
        case AppView.POST_DETAIL:
-        const selectedPost = posts.find(p => p.id === activeModalData?.postId);
         return <PostDetail
-                    post={selectedPost} 
+                    post={activeModalData?.post} 
                     currentUser={user} 
                     onBack={handleBackToMain} 
                     onAddComment={() => {}} 
                     onToggleLikeComment={() => {}} 
-                    likedCommentIds={likedCommentIds} 
+                    likedCommentIds={new Set()} 
                 />;
       case AppView.PAYMENT_DETAILS:
         return <PaymentDetails currentUser={user} cartItems={cartItems} onNavigate={onNavigate} onBack={() => setCurrentView(AppView.CART)} onUpdateUserProfile={handleUpdateProfile}/>;
@@ -808,8 +748,8 @@ const App: React.FC = () => {
             />
             <main className="flex-grow overflow-y-auto">
               {activeTab === MainAppTab.HOME && <Home onOpenModal={handleOpenModal} announcements={announcements} events={events} userName={user.name} />}
-              {activeTab === MainAppTab.STORE && <Store products={products} onAddToCart={handleAddToCart} onOpenModal={handleOpenModal} />}
-              {activeTab === MainAppTab.COMMUNITY && <Community posts={posts} currentUser={user} onNavigateToPostDetail={handleNavigateToPostDetail} likedPostIds={likedPostIds} onToggleLike={handleToggleLikePost} onOpenModal={handleOpenModal} />}
+              {activeTab === MainAppTab.STORE && <Store onAddToCart={handleAddToCart} onOpenModal={handleOpenModal} />}
+              {activeTab === MainAppTab.COMMUNITY && <Community onNavigateToPostDetail={handleNavigateToPostDetail} onToggleLike={handleToggleLikePost} onOpenModal={handleOpenModal} />}
               {activeTab === MainAppTab.CHATS && <Chats conversations={chatConversations} onNavigate={onNavigate} />}
               {activeTab === MainAppTab.PROFILE && <Profile user={user} onLogout={handleLogout} onUpdateProfile={handleUpdateProfile}/>}
             </main>

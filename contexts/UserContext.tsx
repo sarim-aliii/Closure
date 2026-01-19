@@ -19,9 +19,17 @@ export const UserProvider: React.FC<{ children: React.ReactNode }> = ({ children
   const [loading, setLoading] = useState(true);
 
   const fetchProfile = async (uid: string) => {
-     const docRef = doc(db, "users", uid);
-     const snap = await getDoc(docRef);
-     if (snap.exists()) setUser(snap.data() as UserProfile);
+    try {
+      const docRef = doc(db, "users", uid);
+      const snap = await getDoc(docRef);
+      if (snap.exists()) {
+        setUser(snap.data() as UserProfile);
+      } else {
+        console.warn("User authenticated but no profile found in Firestore.");
+      }
+    } catch (error) {
+      console.error("Error fetching user profile:", error);
+    }
   };
 
   useEffect(() => {

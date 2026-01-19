@@ -1,9 +1,63 @@
 rules_version = '2';
 service cloud.firestore {
   match /databases/{database}/documents {
-    // Allow read/write access only to authenticated users
-    match /{document=**} {
-      allow read, write: if request.auth != null;
+    
+    // Check if user is logged in
+    function isAuthenticated() {
+      return request.auth != null;
+    }
+    
+    // Check if the user's email domain matches the document's collegeDomain
+    // matches('.*@' + domain) ensures the email ends with @domain
+    function isSameDomain(docData) {
+      return request.auth.token.email.matches('.*@' + docData.collegeDomain);
+    }
+
+    // --- Collection Rules ---
+
+    // 1. Users Collection
+    // Allow anyone to read profiles (needed for feeds), but ONLY owner can edit
+    match /users/{userId} {
+      allow read: if isAuthenticated();
+      allow write: if request.auth.uid == userId;
+      
+      // Allow user to manage their own subcollections (like notifications)
+      match /{document=**} {
+        allow read, write: if request.auth.uid == userId;
+      }
+    }
+
+    // 2. Posts Collection
+    // Read: Only if user's email matches the post's college domain
+    // Write: User must be auth, and created post must match their domain
+    match /posts/{postId} {
+      allow read: if isAuthenticated() && isSameDomain(resource.data);
+      allow create: if isAuthenticated() && 
+                    isSameDomain(request.resource.data) &&
+                    request.resource.data.authorId == request.auth.uid;
+      
+      allow update, delete: if request.auth.uid == resource.data.authorId;
+
+      // Comments Subcollection
+      match /comments/{commentId} {
+        allow read: if isAuthenticated();
+        allow create: if isAuthenticated();
+      }
+    }
+
+    // 3. Products Collection
+    // Read: Only if user's email matches the product's college domain
+    match /products/{productId} {
+      allow read: if isAuthenticated() && isSameDomain(resource.data);
+      allow create: if isAuthenticated() && isSameDomain(request.resource.data);
+      // Assuming 'sellerId' or 'authorId' exists; otherwise restricted to create-only
+      allow update, delete: if request.auth.uid == resource.data.sellerId || request.auth.uid == resource.data.authorId;
+    }
+
+    // 4. Orders Collection (Private to user)
+    match /orders/{orderId} {
+      allow read, update, delete: if request.auth.uid == resource.data.userId;
+      allow create: if request.auth.uid == request.resource.data.userId;
     }
   }
 }

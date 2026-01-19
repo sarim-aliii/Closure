@@ -11,9 +11,10 @@ import { useUser } from '../../contexts/UserContext';
 
 
 interface ExtendedCommunityProps {
-  onNavigateToPostDetail: (postId: string) => void;
+  onNavigateToPostDetail: (post: Post) => void; 
   onToggleLike: (postId: string) => void;
   onOpenModal: (modalType: ModalType) => void;
+  currentUser?: any;
 }
 
 const Community: React.FC<ExtendedCommunityProps> = ({ 
@@ -155,7 +156,7 @@ const Community: React.FC<ExtendedCommunityProps> = ({
                         <ThumbsUp className={`mr-1.5 w-5 h-5 ${hasLiked ? 'fill-current' : ''}`} /> {post.upvotes || 0}
                     </button>
                     <button 
-                        onClick={() => onNavigateToPostDetail(post.id)}
+                        onClick={() => onNavigateToPostDetail(post)} // UPDATED: Passing full post object
                         className="flex items-center text-sm text-gray-500 dark:text-gray-400 hover:text-indigo-600 dark:hover:text-indigo-400 transition-colors"
                         aria-label={`View comments, ${post.commentsCount} comments`}
                     >
