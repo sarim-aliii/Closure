@@ -5,13 +5,15 @@ import { getStorage } from 'firebase/storage';
 
 
 const firebaseConfig = {
-  apiKey: "YOUR_API_KEY",
-  authDomain: "YOUR_PROJECT_ID.firebaseapp.com",
-  projectId: "YOUR_PROJECT_ID",
-  storageBucket: "YOUR_PROJECT_ID.appspot.com",
-  messagingSenderId: "YOUR_MESSAGING_SENDER_ID",
-  appId: "YOUR_APP_ID"
+  apiKey: "AIzaSyCTKSduZcqmkN2osU6aH5ZaH4rfYO5KQNA",
+  authDomain: "closure-2026.firebaseapp.com",
+  projectId: "closure-2026",
+  storageBucket: "closure-2026.firebasestorage.app",
+  messagingSenderId: "340167651716",
+  appId: "1:340167651716:web:18779909d3e70fe0126dd1",
+  measurementId: "G-GZ9NMNXSS6"
 };
+
 const app = initializeApp(firebaseConfig);
 
 export const auth = getAuth(app);

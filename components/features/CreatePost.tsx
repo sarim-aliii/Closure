@@ -2,7 +2,7 @@ import React, { useState, useRef } from 'react';
 import { storage, db, auth } from '../../firebase'; 
 import { ref, uploadString, getDownloadURL } from "firebase/storage";
 import { collection, addDoc, serverTimestamp } from "firebase/firestore";
-import { CreatePost } from '../../types';
+import { CreatePostProps } from '../../types';
 import Photo from '../icons/Photo'
 import XCircle from '../icons/XCircle'
 
@@ -13,7 +13,7 @@ const getDomainFromEmail = (email: string | null | undefined) => {
     return parts.length === 2 ? parts[1].toLowerCase() : 'general';
 };
 
-const CreatePost: React.FC<CreatePost> = ({ onClose }) => {
+const CreatePost: React.FC<CreatePostProps> = ({ onSubmit, onClose, currentUserId }) => {
   const [title, setTitle] = useState('');
   const [content, setContent] = useState('');
   const [imagePreview, setImagePreview] = useState<string | null>(null);

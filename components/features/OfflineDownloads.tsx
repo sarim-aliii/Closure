@@ -1,5 +1,5 @@
 import React, { useState, useEffect } from 'react';
-import { OfflineDownloads, DownloadableItem } from '../../types';
+import { OfflineDownloadsProps, DownloadableItem } from '../../types';
 import { auth, db } from '../../firebase'; 
 import { collection, query, where, onSnapshot } from 'firebase/firestore';
 import Download from '../icons/Download'
@@ -14,7 +14,7 @@ const getUserDomain = () => {
     return user.email.split('@')[1].toLowerCase();
 };
 
-const OfflineDownloads: React.FC<OfflineDownloads> = ({ user, onDownload }) => {
+const OfflineDownloads: React.FC<OfflineDownloadsProps> = ({ user, onDownload, onViewDownloaded }) => {
   const [items, setItems] = useState<DownloadableItem[]>([]);
   const [loading, setLoading] = useState(true);
   const [userDomain, setUserDomain] = useState<string | null>(null);

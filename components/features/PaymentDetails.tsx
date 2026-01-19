@@ -1,9 +1,9 @@
 import React, { useState, useEffect } from 'react';
-import { AppView, PaymentDetails, Address } from '../../types';
+import { AppView, PaymentDetailsProps, Address } from '../../types';
 import ArrowLeft from '../icons/ArrowLeft';
 
 
-const PaymentDetails: React.FC<PaymentDetails> = ({ 
+const PaymentDetails: React.FC<PaymentDetailsProps> = ({ 
   currentUser, 
   cartItems, 
   onNavigate, 

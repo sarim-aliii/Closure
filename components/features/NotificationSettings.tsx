@@ -1,8 +1,8 @@
 import React from 'react';
-import { NotificationPreferences, NotificationSettings } from '../../types';
+import { NotificationPreferences, NotificationSettingsProps } from '../../types';
 
 
-interface ExtendedNotificationSettings extends NotificationSettings {
+interface ExtendedNotificationSettings extends NotificationSettingsProps {
   onClose?: () => void;
 }
 

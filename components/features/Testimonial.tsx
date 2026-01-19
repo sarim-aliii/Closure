@@ -1,10 +1,9 @@
 import React from 'react';
-import { Testimonial } from '../../types';
+import { Testimonial, TestimonialProps } from '../../types';
 import UserCircle from '../icons/UserCircle';
 
 
-
-const Testimonial: React.FC<Testimonial> = ({ testimonials }) => {
+const TestimonialList: React.FC<TestimonialProps> = ({ testimonials }) => {
   return (
     <div className="p-4">
       <h2 className="text-xl font-semibold text-gray-800 mb-6">Student Testimonials</h2>
@@ -34,4 +33,4 @@ const Testimonial: React.FC<Testimonial> = ({ testimonials }) => {
   );
 };
 
-export default Testimonial;
+export default TestimonialList;

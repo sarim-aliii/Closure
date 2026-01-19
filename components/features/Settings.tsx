@@ -1,5 +1,5 @@
 import React, { useState } from 'react';
-import { ModalType, Settings } from '../../types';
+import { ModalType, SettingsProps } from '../../types';
 import TopBar from '../layout/TopBar';
 import ChevronRight from '../icons/ChevronRight';
 import Share from '../icons/Share';
@@ -15,7 +15,7 @@ import QuestionMarkCircle from '../icons/QuestionMarkCircle';
 
 
 
-const Settings: React.FC<Settings> = ({ version, onLogout, onOpenModal, currentTheme, onSetTheme, onBack, addPopupMessage }) => {
+const Settings: React.FC<SettingsProps> = ({ version, onLogout, onOpenModal, currentTheme, onSetTheme, onBack, addPopupMessage }) => {
   const [isPipEnabled, setIsPipEnabled] = useState(true);
 
   const toggleTheme = () => {

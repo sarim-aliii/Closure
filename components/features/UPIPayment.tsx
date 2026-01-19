@@ -1,9 +1,9 @@
 import React, { useState, useEffect } from 'react';
-import { UPIPayment } from '../../types'; 
+import { UPIPaymentProps } from '../../types'; 
 import TopBar from '../layout/TopBar';
 
 
-const UPIPayment: React.FC<UPIPayment> = ({ 
+const UPIPayment: React.FC<UPIPaymentProps> = ({ 
   deliveryAddress, 
   paymentMethod, 
   totalAmount, 

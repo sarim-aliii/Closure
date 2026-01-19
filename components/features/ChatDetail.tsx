@@ -1,5 +1,5 @@
 import React, { useState, useRef, useEffect } from 'react';
-import { ChatMessage, ChatDetail } from '../../types';
+import { ChatMessage, ChatDetailProps } from '../../types';
 import ArrowLeft from '../icons/ArrowLeft';
 import { auth, db, storage } from '../../firebase';
 import { collection, addDoc, query, orderBy, onSnapshot, serverTimestamp, updateDoc, doc } from 'firebase/firestore';
@@ -9,7 +9,7 @@ import Send from '../icons/Send'
 
 
 
-interface ExtendedChatDetail extends ChatDetail {
+interface ExtendedChatDetail extends ChatDetailProps {
   currentUserId?: string;
 }
 

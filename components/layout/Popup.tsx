@@ -1,12 +1,12 @@
 import React, { useEffect, useState } from 'react';
-import { Popup } from '../../types';
+import { PopupProps } from '../../types';
 import CheckCircle from '../icons/CheckCircle'
 import XCircle from '../icons/XCircle'
 import InfoField from '../icons/InfoField'
 
 
 
-const Popup: React.FC<Popup> = ({ message, type, onClose, duration = 3000 }) => {
+const Popup: React.FC<PopupProps> = ({ message, type, onClose, duration = 3000 }) => {
   const [isVisible, setIsVisible] = useState(false);
 
   useEffect(() => {

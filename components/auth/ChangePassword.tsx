@@ -2,10 +2,10 @@ import React, { useState } from 'react';
 import LockClosed from '../icons/LockClosed';
 import Eye from '../icons/Eye';
 import EyeSlash from '../icons/EyeSlash';
-import { ChangePassword, ModalType } from '../../types';
+import { ChangePasswordProps, ModalType } from '../../types';
 
 
-interface ExtendedChangePassword extends ChangePassword {
+interface ExtendedChangePassword extends ChangePasswordProps {
   onOpenModal?: (modalType: ModalType) => void;
 }
 

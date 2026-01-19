@@ -3,11 +3,11 @@ import Menu from '../icons/Menu';
 import Bell from '../icons/Bell';
 import ArrowLeft from '../icons/ArrowLeft';
 import Cart from '../icons/Cart';
-import { Notification, TopBar } from '../../types';
+import { Notification, TopBarProps } from '../../types';
 import NotificationDropdown from '../features/NotificationDropdown';
 
 
-const TopBar: React.FC<TopBar> = ({
+const TopBar: React.FC<TopBarProps> = ({
   title,
   userName,
   showMenuButton = true,

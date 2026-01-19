@@ -1,10 +1,10 @@
 import React from 'react';
-import { OrderSuccess } from '../../types';
+import { OrderSuccessProps } from '../../types';
 import CheckCircle from '../icons/CheckCircle'
 import Share from '../icons/Share'
 
 
-const OrderSuccess: React.FC<OrderSuccess> = ({ order, onViewOrders, onContinueShopping, onClose }) => {
+const OrderSuccess: React.FC<OrderSuccessProps> = ({ order, onViewOrders, onContinueShopping, onClose }) => {
   if (!order) {
     return (
         <div className="p-4 text-center">

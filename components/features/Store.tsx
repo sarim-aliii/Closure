@@ -1,5 +1,5 @@
 import React, { useState, useEffect } from 'react';
-import { Store, Product, ModalType } from '../../types';
+import { StoreProps, Product, ModalType } from '../../types';
 import { auth, db } from '../../firebase'; 
 import { collection, query, where, orderBy, onSnapshot } from 'firebase/firestore';
 import Plus from '../icons/Plus';
@@ -11,7 +11,7 @@ const getUserDomain = () => {
     return user.email.split('@')[1].toLowerCase();
 };
 
-const Store: React.FC<Store> = ({ onAddToCart, onOpenModal }) => {
+const Store: React.FC<StoreProps> = ({ onAddToCart, onOpenModal }) => {
   const [products, setProducts] = useState<Product[]>([]);
   const [loading, setLoading] = useState(true);
   const [userDomain, setUserDomain] = useState<string | null>(null);

@@ -1,12 +1,13 @@
 import React, { useState, useEffect } from 'react';
 import Search from '../icons/Search';
 import UserCircle from '../icons/UserCircle';
-import { Chats, AppView, ChatConversation } from '../../types';
+import { ChatsProps, AppView, ChatConversation } from '../../types';
 import { auth, db } from '../../firebase'; 
 import { collection, query, where, onSnapshot, orderBy } from 'firebase/firestore';
 
 
-const Chats: React.FC<Chats> = ({ onNavigate }) => {
+
+const Chats: React.FC<ChatsProps> = ({ onNavigate }) => {
   const [searchTerm, setSearchTerm] = useState('');
   const [conversations, setConversations] = useState<ChatConversation[]>([]);
   const [loading, setLoading] = useState(true);

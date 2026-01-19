@@ -27,7 +27,7 @@ import PostDetail from './components/features/PostDetail';
 import PaymentDetails from './components/features/PaymentDetails'; 
 import UPIPayment from './components/features/UPIPayment'; 
 import CreatePost from './components/features/CreatePost';
-import Testimonial from './components/features/Testimonial';
+import TestimonialComponent from './components/features/Testimonial';
 import PrivacyPolicy from './components/features/PrivacyPolicy';
 import HelpSupport from './components/features/HelpSupport';
 import OfflineDownloads from './components/features/OfflineDownloads';
@@ -630,9 +630,9 @@ const App: React.FC = () => {
       case ModalType.ADD_PRODUCT:
          return <AddProduct onSubmit={handleAddNewProduct} onClose={handleCloseModal} />;
       case ModalType.TESTIMONIALS:
-        return <Testimonial testimonials={testimonialsData} />;
+        return <TestimonialComponent testimonials={testimonialsData} />;
       case ModalType.PRIVACY_POLICY:
-        return <PrivacyPolicy />;
+        return <PrivacyPolicy onClose={handleCloseModal} />;
       case ModalType.HELP_SUPPORT:
         return <HelpSupport onStartSupportChat={() => {
             handleCloseModal();
@@ -735,7 +735,7 @@ const App: React.FC = () => {
       case AppView.SIGNUP:
         return <Signup onSignupAttempt={handleSignupAttempt} onNavigateToLogin={navigateToLogin} errorMessage={error} />;
       case AppView.SETTINGS:
-        return <Settings version={appVersion} onLogout={handleLogout} onOpenModal={handleOpenModal} currentTheme={theme} onSetTheme={setTheme} onBack={handleBackToMain} addPopupMessage={addPopupMessage} />;
+        return <Settings version={appVersion} onLogout={handleLogout} onOpenModal={handleOpenModal} currentTheme={{ mode: theme }} onSetTheme={setTheme} onBack={handleBackToMain} addPopupMessage={addPopupMessage} />;
       case AppView.CART:
         return <Cart cartItems={cartItems} onRemoveItem={handleRemoveFromCart} onUpdateQuantity={handleUpdateCartQuantity} onNavigate={onNavigate} onBack={handleBackToMain} />;
       case AppView.CHAT_DETAIL:

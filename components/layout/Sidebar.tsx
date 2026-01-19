@@ -1,6 +1,6 @@
 import React from 'react';
 import UserCircle from '../icons/UserCircle'; 
-import { Sidebar, ModalType } from '../../types';
+import { SidebarProps, ModalType } from '../../types';
 import Download from '../icons/Download'
 import Folder from '../icons/Folder'
 import Testimonial from '../icons/Testimonial'
@@ -13,7 +13,7 @@ import Share from '../icons/Share'
 
 
 
-const Sidebar: React.FC<Sidebar> = ({ isOpen, onClose, user, onNavigateToSettings, onOpenModal, onSwitchToProfileTab }) => {
+const Sidebar: React.FC<SidebarProps> = ({ isOpen, onClose, user, onNavigateToSettings, onOpenModal, onSwitchToProfileTab }) => {
   const menuItems = [
     { label: 'Offline Downloads', icon: Download, badge: false, action: () => { onOpenModal(ModalType.OFFLINE_DOWNLOADS_LIST); onClose(); } },
     { label: 'Free Material', icon: Folder, badge: false, action: () => { onOpenModal(ModalType.FREE_MATERIAL_LIST); onClose(); } },

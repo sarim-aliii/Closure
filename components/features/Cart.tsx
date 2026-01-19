@@ -1,10 +1,10 @@
 import React from 'react';
-import { AppView, Cart} from '../../types'; 
+import { AppView, CartProps } from '../../types'; 
 import ArrowLeft from '../icons/ArrowLeft'; 
 
 
 
-const Cart: React.FC<Cart> = ({ cartItems, onRemoveItem, onUpdateQuantity, onNavigate, onBack }) => {
+const Cart: React.FC<CartProps> = ({ cartItems, onRemoveItem, onUpdateQuantity, onNavigate, onBack }) => {
   const totalAmount = cartItems.reduce((sum, item) => sum + item.price * item.quantity, 0);
 
   return (

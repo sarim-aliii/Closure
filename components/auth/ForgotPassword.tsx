@@ -1,10 +1,10 @@
 import React, { useState } from 'react';
-import { ForgotPassword } from '../../types';
+import { ForgotPasswordProps } from '../../types';
 import AtSymbol from '../icons/AtSymbol'
 import CheckCircle from '../icons/CheckCircle'
 
 
-const ForgotPassword: React.FC<ForgotPassword> = ({ onClose, onForgotPasswordRequest }) => {
+const ForgotPassword: React.FC<ForgotPasswordProps> = ({ onClose, onForgotPasswordRequest }) => {
   const [email, setEmail] = useState('');
   const [isLoading, setIsLoading] = useState(false);
   const [isSubmitted, setIsSubmitted] = useState(false); 

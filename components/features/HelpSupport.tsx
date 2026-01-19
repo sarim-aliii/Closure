@@ -1,10 +1,10 @@
 import React, { useState, useEffect } from 'react';
-import { FAQItem, HelpSupport } from '../../types';
+import { FAQItemProps, HelpSupport as HelpSupportProps } from '../../types';
 import { db } from '../../firebase'; 
 import { collection, getDocs, query, orderBy } from 'firebase/firestore';
 
 
-const FAQItem: React.FC<FAQItem> = ({ question, answer }) => {
+const FAQItem: React.FC<FAQItemProps> = ({ question, answer }) => {
   const [isOpen, setIsOpen] = useState(false);
   
   return (
@@ -32,11 +32,11 @@ const FAQItem: React.FC<FAQItem> = ({ question, answer }) => {
   );
 };
 
-const HelpSupport: React.FC<HelpSupport> = ({ onStartSupportChat }) => {
-  const [faqs, setFaqs] = useState<FAQItem[]>([]);
+const HelpSupport: React.FC<HelpSupportProps> = ({ onStartSupportChat }) => {
+  const [faqs, setFaqs] = useState<FAQItemProps[]>([]);
   const [loading, setLoading] = useState(true);
 
-  const defaultFaqs: FAQItem[] = [
+  const defaultFaqs: FAQItemProps[] = [
     { question: "How do I reset my password?", answer: "You can reset your password from the login screen by clicking the 'Forgot Password?' link. Check your email for the reset link." },
     { question: "How can I update my profile?", answer: "Navigate to the 'Profile' tab, then tap on the 'Edit' icon to update your name, bio, or profile picture." },
     { question: "Where are my course materials?", answer: "Course materials are located in the 'Free Material' section for institutional resources, or the 'Store' for purchased items." },
@@ -50,7 +50,7 @@ const HelpSupport: React.FC<HelpSupport> = ({ onStartSupportChat }) => {
         const snapshot = await getDocs(q);
         
         if (!snapshot.empty) {
-             const fetchedData = snapshot.docs.map(doc => doc.data() as FAQItem);
+             const fetchedData = snapshot.docs.map(doc => doc.data() as FAQItemProps);
              setFaqs(fetchedData);
         } else {
             setFaqs(defaultFaqs);

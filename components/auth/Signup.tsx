@@ -4,7 +4,7 @@ import AtSymbol from '../icons/AtSymbol';
 import LockClosed from '../icons/LockClosed';
 import Eye from '../icons/Eye';
 import EyeSlash from '../icons/EyeSlash';
-import { Signup } from '../../types';
+import { SignupProps } from '../../types';
 
 
 const extractDomain = (email: string) => {
@@ -51,7 +51,7 @@ const checkDomainIsValid = async (domain: string): Promise<boolean> => {
   }
 };
 
-const Signup: React.FC<Signup> = ({ onSignupAttempt, onNavigateToLogin, errorMessage }) => {
+const Signup: React.FC<SignupProps> = ({ onSignupAttempt, onNavigateToLogin, errorMessage }) => {
   const [name, setName] = useState('');
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');

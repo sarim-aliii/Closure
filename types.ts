@@ -1,11 +1,11 @@
 // Authentication Props
-export interface Signup {
+export interface SignupProps {
   onSignupAttempt: (name: string, email: string, passwordPlain: string) => Promise<boolean>; 
   onNavigateToLogin: () => void;
   errorMessage?: string | null;
 }
 
-export interface Login {
+export interface LoginProps {
   onLoginAttempt: (email: string, password: string) => Promise<boolean>; 
   onNavigateToSignup: () => void;
   onOpenModal: (modalType: ModalType) => void;
@@ -13,12 +13,12 @@ export interface Login {
   errorMessage?: string | null; 
 }
 
-export interface ForgotPassword {
+export interface ForgotPasswordProps {
   onClose: () => void;
   onForgotPasswordRequest: (email: string) => Promise<boolean>; 
 }
 
-export interface ChangePassword {
+export interface ChangePasswordProps {
   onChangePassword: (oldPassword: string, newPassword: string) => Promise<boolean>;
   onClose: () => void;
 }
@@ -91,7 +91,7 @@ export interface Order {
   };
 }
 
-export interface OrderSuccess {
+export interface OrderSuccessProps {
   order?: Order;
   onViewOrders: () => void; 
   onContinueShopping: () => void; 
@@ -181,7 +181,7 @@ export interface Testimonial {
 }
 
 // Chat Interfaces
-export interface Chats {
+export interface ChatsProps {
   conversations: ChatConversation[];
   onNavigate: (view: AppView, data?: any) => void; 
 }
@@ -203,7 +203,7 @@ export interface ChatConversation {
     lastMessageTimestamp?: Date;
 }
 
-export interface ChatDetail {
+export interface ChatDetailProps {
   conversationId: string;
   onBack: () => void;
   initialConversation?: ChatConversation; 
@@ -225,16 +225,17 @@ export interface NotificationPreferences {
   promotionalUpdates: boolean;
 }
 
-export interface NotificationDropdown {
+export interface NotificationDropdownProps {
   notifications: Notification[];
   onClose: () => void;
   onNotificationClick: (notification: Notification) => void;
   onMarkAllRead: () => void;
 }
 
-export interface NotificationSettings {
+export interface NotificationSettingsProps {
   preferences: NotificationPreferences;
   onUpdatePreferences: (updatedPrefs: Partial<NotificationPreferences>) => void;
+  onClose?: () => void;
 }
 
 // Community & Posts
@@ -265,7 +266,7 @@ export interface Comment {
   upvotes: number; 
 }
 
-export interface CreatePost {
+export interface CreatePostProps {
   onSubmit: (title: string, content: string, imageUrl?: string) => Promise<void>;
   onClose: () => void;
   currentUserId?: string | null;
@@ -288,7 +289,7 @@ export interface CartItem extends Product {
   quantity: number;
 }
 
-export interface Cart {
+export interface CartProps {
   cartItems: CartItem[];
   onRemoveItem: (itemId: string) => void;
   onUpdateQuantity: (itemId: string, quantity: number) => void;
@@ -297,7 +298,7 @@ export interface Cart {
 }
 
 // Screen Props
-export interface Community {
+export interface CommunityProps {
   posts: Post[];
   currentUser: UserProfile | null;
   onNavigateToPostDetail: (postId: string) => void;
@@ -306,7 +307,7 @@ export interface Community {
   onOpenModal: (modalType: ModalType) => void;
 }
 
-export interface FreeMaterial {
+export interface FreeMaterialProps {
   materials: FreeMaterialItem[];
   onOpenModal: (modalType: ModalType, data?: any) => void;
 }
@@ -315,21 +316,21 @@ export interface HelpSupport {
   onStartSupportChat: () => void;
 }
 
-export interface Home {
+export interface HomeProps {
   onOpenModal: (modalType: ModalType, data?: any) => void;
   announcements: Announcement[];
   events: Event[];
   userName?: string;
 }
 
-export interface OfflineDownloads {
+export interface OfflineDownloadsProps {
   items: DownloadableItem[];
   user: UserProfile | null;
   onDownload: (item: DownloadableItem) => void; 
   onViewDownloaded: () => void;
 }
 
-export interface PaymentDetails {
+export interface PaymentDetailsProps {
   currentUser: UserProfile | null;
   cartItems: CartItem[];
   onNavigate: (view: AppView, data?: any) => void;
@@ -337,7 +338,7 @@ export interface PaymentDetails {
   onUpdateUserProfile: (updatedAddress: Partial<Address>) => void; 
 }
 
-export interface PostDetail {
+export interface PostDetailProps {
   post?: Post;
   currentUser: UserProfile | null;
   onBack: () => void;
@@ -346,13 +347,13 @@ export interface PostDetail {
   likedCommentIds: Set<string>;
 }
 
-export interface Profile {
+export interface ProfileProps {
   user: UserProfile;
   onLogout: () => void;
   onUpdateProfile: (updatedData: Partial<UserProfile>) => void;
 }
 
-export interface AccordionSection {
+export interface AccordionSectionProps {
   title: string;
   badgeNumber?: number; 
   children: React.ReactNode;
@@ -366,7 +367,7 @@ export interface Theme {
   primaryColor?: string,
 }
 
-export interface Settings {
+export interface SettingsProps {
   version: string;
   onLogout: () => void;
   onOpenModal: (modalType: ModalType, data?: any) => void;
@@ -376,13 +377,13 @@ export interface Settings {
   addPopupMessage: (message: string, type: 'success' | 'error' | 'info') => void;
 }
 
-export interface Store {
+export interface StoreProps {
   products?: Product[];
   onAddToCart: (product: Product) => void;
   onOpenModal: (modal: ModalType) => void;
 }
 
-export interface UPIPayment {
+export interface UPIPaymentProps {
   deliveryAddress: Address;
   paymentMethod: string; 
   totalAmount: number;
@@ -390,9 +391,10 @@ export interface UPIPayment {
   onBack: () => void; 
 }
 
-export interface ViewFreeMaterialContent {
+export interface ViewFreeMaterialContentProps {
   title: string;
   content: string;
+  onClose?: () => void;
 }
 
 export interface WriteExperience {
@@ -400,17 +402,17 @@ export interface WriteExperience {
   onClose: () => void;
 }
 
-export interface Testimonial {
+export interface TestimonialProps {
   testimonials: Testimonial[];
 }
 
 // Layout Props
-export interface BottomNav {
+export interface BottomNavProps {
   activeTab: MainAppTab;
   onTabChange: (tab: MainAppTab) => void;
 }
 
-export interface Modal {
+export interface ModalProps {
   isOpen: boolean;
   onClose: () => void;
   title: string;
@@ -418,14 +420,14 @@ export interface Modal {
   size?: 'sm' | 'md' | 'lg' | 'xl';
 }
 
-export interface Popup{
+export interface PopupProps {
   message: string;
   type: 'success' | 'error' | 'info';
   onClose: () => void;
   duration?: number;
 }
 
-export interface Sidebar {
+export interface SidebarProps {
   isOpen: boolean;
   onClose: () => void;
   user: UserProfile;
@@ -434,7 +436,7 @@ export interface Sidebar {
   onSwitchToProfileTab?: () => void;
 }
 
-export interface TopBar {
+export interface TopBarProps {
   title: string;
   userName?: string | null;
   showMenuButton?: boolean;
@@ -458,7 +460,7 @@ export interface InputField {
   type?: string;
 }
 
-export interface FAQItem {
+export interface FAQItemProps {
   question: string,
   answer: string,
 }

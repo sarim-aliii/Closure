@@ -1,5 +1,5 @@
 import React, { useState, useEffect } from 'react';
-import { FreeMaterialItem, ModalType, FreeMaterial } from '../../types';
+import { FreeMaterialItem, ModalType, FreeMaterialProps } from '../../types';
 import { auth, db } from '../../firebase'; 
 import { collection, query, where, onSnapshot } from 'firebase/firestore';
 import Link from '../icons/Link'
@@ -12,7 +12,7 @@ const getUserDomain = () => {
     return user.email.split('@')[1].toLowerCase();
 };
 
-const FreeMaterial: React.FC<FreeMaterial> = ({ onOpenModal }) => {
+const FreeMaterial: React.FC<FreeMaterialProps> = ({ materials, onOpenModal }) => {
   const [items, setItems] = useState<FreeMaterialItem[]>([]);
   const [loading, setLoading] = useState(true);
   const [userDomain, setUserDomain] = useState<string | null>(null);

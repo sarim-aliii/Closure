@@ -1,7 +1,7 @@
 import React, { useState, useEffect } from 'react';
-import { PostDetail, Comment, FireStoreComment } from '../../types';
+import { PostDetailProps, FireStoreComment } from '../../types';
 import TopBar from '../layout/TopBar';
-import { auth, db } from '../../firebase'; 
+import { db } from '../../firebase'; 
 import { collection, addDoc, query, orderBy, onSnapshot, serverTimestamp, doc, updateDoc, increment } from 'firebase/firestore';
 import UserCircle from '../icons/UserCircle';
 import Send from '../icons/Send';
@@ -9,7 +9,7 @@ import Send from '../icons/Send';
 
 
 
-const PostDetail: React.FC<PostDetail> = ({ post, currentUser, onBack }) => {
+const PostDetail: React.FC<PostDetailProps> = ({ post, currentUser, onBack }) => {
   const [comments, setComments] = useState<FireStoreComment[]>([]);
   const [newComment, setNewComment] = useState('');
   const [isSubmitting, setIsSubmitting] = useState(false);

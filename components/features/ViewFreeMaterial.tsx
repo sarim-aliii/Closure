@@ -1,7 +1,7 @@
 import React from 'react';
-import { ViewFreeMaterialContent } from '../../types';
+import { ViewFreeMaterialContentProps } from '../../types';
 
-interface ExtendedViewFreeMaterial extends ViewFreeMaterialContent {
+interface ExtendedViewFreeMaterial extends ViewFreeMaterialContentProps {
   onClose?: () => void;
 }
 

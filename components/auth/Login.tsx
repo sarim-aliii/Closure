@@ -3,10 +3,10 @@ import AtSymbol from '../icons/AtSymbol';
 import LockClosed from '../icons/LockClosed';
 import Eye from '../icons/Eye';
 import EyeSlash from '../icons/EyeSlash';
-import { ModalType, Login } from '../../types';
+import { ModalType, LoginProps } from '../../types';
 
 
-const Login: React.FC<Login> = ({ 
+const Login: React.FC<LoginProps> = ({ 
   onLoginAttempt, 
   onNavigateToSignup, 
   onOpenModal, 

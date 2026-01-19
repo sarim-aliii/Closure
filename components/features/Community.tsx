@@ -1,5 +1,5 @@
 import React, { useState, useMemo, useEffect } from 'react';
-import { Community, Post } from '../../types';
+import { CommunityProps, Post } from '../../types';
 import UserCircle from '../icons/UserCircle';
 import Search from '../icons/Search';
 import { auth, db } from '../../firebase';
@@ -15,7 +15,7 @@ const getUserDomain = () => {
     return user.email.split('@')[1].toLowerCase();
 };
 
-const Community: React.FC<Community> = ({ currentUser, onNavigateToPostDetail, likedPostIds, onToggleLike }) => {
+const Community: React.FC<CommunityProps> = ({ currentUser, onNavigateToPostDetail, likedPostIds, onToggleLike }) => {
   const [searchTerm, setSearchTerm] = useState('');
   const [posts, setPosts] = useState<Post[]>([]);
   const [loading, setLoading] = useState(true);

@@ -1,5 +1,5 @@
 import React, { useState, useEffect, useRef } from 'react';
-import { UserProfile, Order, Profile, AccordionSection, Post, AppView } from '../../types'; 
+import { UserProfile, Order, ProfileProps, AccordionSectionProps, Post } from '../../types'; 
 import { storage, db } from '../../firebase';
 import { ref, uploadString, getDownloadURL } from "firebase/storage";
 import { collection, query, where, getDocs, orderBy } from "firebase/firestore";
@@ -21,7 +21,7 @@ import Star from '../icons/Star'
 
 
 
-const AccordionSection: React.FC<AccordionSection> = ({ title, badgeNumber, children, defaultOpen = false, isEditing, onEditToggle }) => {
+const AccordionSection: React.FC<AccordionSectionProps> = ({ title, badgeNumber, children, defaultOpen = false, isEditing, onEditToggle }) => {
   const [isOpen, setIsOpen] = useState(defaultOpen);
 
   return (
@@ -94,7 +94,7 @@ const EditableProfileField: React.FC<{label: string, value: string, name: keyof 
 );
 
 
-const Profile: React.FC<Profile> = ({ user, onLogout, onUpdateProfile }) => {
+const Profile: React.FC<ProfileProps> = ({ user, onLogout, onUpdateProfile }) => {
   const [activeTab, setActiveTab] = useState('INFO');
   const tabs = ['INFO', 'POSTS', 'ORDERS', 'COURSES']; 
 

@@ -1,5 +1,5 @@
 import React, { useState, useEffect } from 'react';
-import { ModalType, Home, Post, AppView } from '../../types';
+import { ModalType, HomeProps, Post, AppView } from '../../types';
 import { auth, db } from '../../firebase'; 
 import { collection, query, where, orderBy, onSnapshot, doc, updateDoc, increment } from 'firebase/firestore';
 import Calendar from '../icons/Calendar'
@@ -16,7 +16,7 @@ const getUserDomain = () => {
     return user.email.split('@')[1].toLowerCase();
 };
 
-interface ExtendedHome extends Home {
+interface ExtendedHome extends HomeProps {
     onNavigate?: (view: AppView, data?: any) => void;
 }
 
