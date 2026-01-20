@@ -1,10 +1,12 @@
 import React, { useState, useCallback, useEffect } from 'react';
 import { App as CapacitorApp } from '@capacitor/app';
 import { Routes, Route, useNavigate, Navigate, useLocation } from 'react-router-dom';
+import { Capacitor } from '@capacitor/core'; 
+import { PushNotifications } from '@capacitor/push-notifications'; 
 
 import { 
   AppView, ModalType,
-  Product, CartItem, Notification, Announcement, Event,
+  Product, CartItem, Notification as AppNotification, Announcement, Event,
   DownloadableItem, FreeMaterialItem, Testimonial,
   ChatConversation, PopupMessage, NotificationPreferences,
   Post, Address, Order 
@@ -49,7 +51,10 @@ import ViewFreeMaterialContent from './components/features/ViewFreeMaterial';
 import AddProduct from './components/features/AddProduct'; 
 import AdminDashboard from './components/features/AdminDashboard';
 
-import { auth, db, storage } from './firebase';
+
+import { auth, db, storage, messaging } from './firebase'; 
+import { getToken, onMessage } from "firebase/messaging"; 
+
 import { 
   signOut, signInWithEmailAndPassword, updatePassword, 
   sendPasswordResetEmail, reauthenticateWithCredential, EmailAuthProvider 
@@ -62,8 +67,9 @@ import { ref, uploadString, getDownloadURL } from "firebase/storage";
 
 export type Theme = 'light' | 'dark';
 
+
 // --- Protected Route Wrapper ---
-const RequireAuth = ({ children }: { children: JSX.Element }) => {
+const RequireAuth = ({ children }: { children: React.ReactElement }) => {
   const { user, loading } = useUser();
   const location = useLocation();
 
@@ -97,7 +103,7 @@ const App: React.FC = () => {
   
   // Application Data State
   const [cartItems, setCartItems] = useState<CartItem[]>([]);
-  const [notifications, setNotifications] = useState<Notification[]>([]);
+  const [notifications, setNotifications] = useState<AppNotification[]>([]);
   
   // Mock/Initial Data State
   const [announcements, setAnnouncements] = useState<Announcement[]>([]);
@@ -117,7 +123,76 @@ const App: React.FC = () => {
     newAnnouncements: true, chatMentions: true, eventReminders: true, promotionalUpdates: false,
   };
 
-  // Capacitor Back Button Logic (Router Aware)
+  const addPopupMessage = useCallback((message: string, type: PopupMessage['type']) => {
+    const id = String(Date.now());
+    setPopupMessages(prev => [...prev, { id, message, type }]);
+    setTimeout(() => setPopupMessages(prev => prev.filter(p => p.id !== id)), 3000);
+  }, []);
+
+  // --- NOTIFICATION SETUP (Native + Web) ---
+  useEffect(() => {
+    if (!firebaseUser) return;
+
+    const setupNotifications = async () => {
+      try {
+        if (Capacitor.isNativePlatform()) {
+          // 1. Native Mobile (Android/iOS) Logic
+          const permStatus = await PushNotifications.requestPermissions();
+          
+          if (permStatus.receive === 'granted') {
+            await PushNotifications.register();
+            
+            PushNotifications.addListener('registration', async (token) => {
+              console.log('Push Registration Token:', token.value);
+              await updateDoc(doc(db, "users", firebaseUser.uid), {
+                fcmToken: token.value
+              });
+            });
+
+            PushNotifications.addListener('registrationError', (error) => {
+               console.error('Push Registration Error:', error);
+            });
+
+            PushNotifications.addListener('pushNotificationReceived', (notification) => {
+               addPopupMessage(notification.title || "New Notification", 'info');
+            });
+
+            PushNotifications.addListener('pushNotificationActionPerformed', (notification) => {
+               const data = notification.notification.data;
+               if (data.chatId) {
+                  navigate(`/chats/${data.chatId}`);
+               }
+            });
+          }
+        } else {
+          // 2. Web / PWA Logic
+          const permission = await Notification.requestPermission();
+          if (permission === 'granted') {
+            const token = await getToken(messaging, { 
+              vapidKey: import.meta.env.VITE_VAPID_API_KEY 
+            });
+            
+            if (token) {
+              await updateDoc(doc(db, "users", firebaseUser.uid), {
+                fcmToken: token
+              });
+            }
+
+            onMessage(messaging, (payload) => {
+              addPopupMessage(payload.notification?.title || "New Message", 'info');
+            });
+          }
+        }
+      } catch (error) {
+        console.error("Error setting up notifications:", error);
+      }
+    };
+
+    setupNotifications();
+  }, [firebaseUser, addPopupMessage, navigate]);
+
+
+  // Capacitor Back Button Logic
   useEffect(() => {
     const setupBackButtonListener = async () => {
       const handleBackButton = await CapacitorApp.addListener('backButton', ({ canGoBack }) => {
@@ -132,12 +207,6 @@ const App: React.FC = () => {
     setupBackButtonListener();
   }, []);
 
-  const addPopupMessage = useCallback((message: string, type: PopupMessage['type']) => {
-    const id = String(Date.now());
-    setPopupMessages(prev => [...prev, { id, message, type }]);
-    setTimeout(() => setPopupMessages(prev => prev.filter(p => p.id !== id)), 3000);
-  }, []);
-
   // Fetch Notifications
   useEffect(() => {
     if (user && firebaseUser?.emailVerified) {
@@ -147,7 +216,7 @@ const App: React.FC = () => {
           const snap = await getDocs(notificationsQuery);
           setNotifications(snap.docs.map(d => ({ 
               id: d.id, ...d.data(), timestamp: (d.data().timestamp as Timestamp).toDate() 
-          } as Notification)));
+          } as AppNotification)));
         } catch (e) { console.error("Error fetching notifications", e); }
       };
       fetchNotifications();
@@ -267,7 +336,7 @@ const App: React.FC = () => {
   const renderModalContent = () => {
     switch (currentModal) {
       case ModalType.CREATE_POST:
-        return <CreatePost onSubmit={async (title, content, img) => { /* Logic usually inside CreatePost or passed here */ handleCloseModal(); addPopupMessage("Post created", "success"); }} onClose={handleCloseModal} currentUserId={firebaseUser?.uid} />;
+        return <CreatePost onSubmit={async (title, content, img) => { handleCloseModal(); addPopupMessage("Post created", "success"); }} onClose={handleCloseModal} currentUserId={firebaseUser?.uid} />;
       case ModalType.ADD_PRODUCT:
          return <AddProduct onSubmit={async () => { handleCloseModal(); addPopupMessage("Product added", "success"); }} onClose={handleCloseModal} />;
       case ModalType.TESTIMONIALS: return <TestimonialComponent testimonials={testimonialsData} />;
@@ -278,7 +347,7 @@ const App: React.FC = () => {
       case ModalType.VIEW_FREE_MATERIAL_CONTENT: return <ViewFreeMaterialContent title={activeModalData?.title} content={activeModalData?.content} />;
       case ModalType.ANNOUNCEMENT_DETAIL: return <div className="p-4">{activeModalData?.fullContent}</div>;
       case ModalType.EVENT_DETAIL: return <div className="p-4">{activeModalData?.fullDescription}</div>;
-      case ModalType.NOTIFICATION_SETTINGS: return <NotificationSettings preferences={notificationPreferences} onUpdatePreferences={async () => {}} />;
+      case ModalType.NOTIFICATION_SETTINGS: return <NotificationSettings onClose={handleCloseModal} />;
       case ModalType.CHANGE_PASSWORD: return <ChangePassword onChangePassword={async () => true} onClose={handleCloseModal} />;
       case ModalType.TERMS_AND_CONDITIONS: return <TermsAndConditions onClose={handleCloseModal}/>;
       case ModalType.ACKNOWLEDGEMENTS: return <Acknowledgements onClose={handleCloseModal}/>;
@@ -290,27 +359,22 @@ const App: React.FC = () => {
   };
 
   const modalTitle = () => {
-      // (Simplified mapping for brevity, similar to previous switch case)
       if (currentModal === ModalType.CREATE_POST) return "Create New Post";
       if (currentModal === ModalType.ADD_PRODUCT) return "Add New Product";
-      // ... Add other cases as needed ...
       return currentModal || "";
   };
 
   return (
     <>
       <Routes>
-        {/* --- Public Routes --- */}
         <Route path="/login" element={
           <Login 
             onLoginAttempt={handleLoginAttempt} 
-            // Note: onNavigateToSignup is deprecated in Login.tsx in favor of Link
             onOpenModal={handleOpenModal} 
             errorMessage={error} 
           />
         } />
         
-        {/* Signup logic is now internal to Signup.tsx, we just need to handle success/fail */}
         <Route path="/signup" element={
             <Signup 
                 onSignupAttempt={async () => true} 
@@ -319,8 +383,6 @@ const App: React.FC = () => {
             />
         } />
         
-        {/* --- Protected Routes --- */}
-        {/* Wrapped in RequireAuth + MainLayout */}
         <Route element={
           <RequireAuth>
             <MainLayout 
@@ -337,27 +399,22 @@ const App: React.FC = () => {
             />
           </RequireAuth>
         }>
-          {/* Dashboard / Tabs */}
           <Route path="/" element={<Home onOpenModal={handleOpenModal} announcements={announcements} events={events} userName={user?.name || ''} />} />
           <Route path="/store" element={<Store onAddToCart={handleAddToCart} onOpenModal={handleOpenModal} />} />
           <Route path="/community" element={<Community onNavigateToPostDetail={(post) => navigate(`/posts/${post.id}`, { state: { post } })} onToggleLike={async () => {}} onOpenModal={handleOpenModal} />} />
           <Route path="/chats" element={<Chats conversations={chatConversations} onNavigate={(view, data) => navigate(`/chats/${data?.conversationId}`)} />} />
-          <Route path="/profile" element={<Profile user={user!} onLogout={handleLogout} onUpdateProfile={async () => {}} />} />
-          
-          {/* Secondary Pages (still inside Layout) */}
+          <Route path="/profile" element={<Profile onLogout={handleLogout} />} />
           <Route path="/cart" element={<Cart cartItems={cartItems} onRemoveItem={handleRemoveFromCart} onUpdateQuantity={handleUpdateCartQuantity} onNavigate={(view) => { if (view === 'PAYMENT_DETAILS') navigate('/payment'); }} onBack={() => navigate(-1)} />} />
           <Route path="/settings" element={<Settings version={appVersion} onLogout={handleLogout} onOpenModal={handleOpenModal} currentTheme={{ mode: theme }} onSetTheme={setTheme} onBack={() => navigate('/')} addPopupMessage={addPopupMessage} userEmail={user?.email} onNavigateToAdmin={() => navigate('/admin')} />} />
           <Route path="/payment" element={<PaymentDetails currentUser={user} cartItems={cartItems} onNavigate={(view, data) => { if(view === 'UPI_PAYMENT') navigate('/upi-payment', { state: data }); }} onBack={() => navigate('/cart')} onUpdateUserProfile={async () => {}} />} />
           <Route path="/upi-payment" element={<UPIPayment deliveryAddress={{} as Address} paymentMethod="" totalAmount={0} onConfirmPayment={async () => {}} onBack={() => navigate('/payment')} />} />
           <Route path="/admin" element={<AdminDashboard onClose={() => navigate('/settings')} />} />
           
-          {/* Detail Pages */}
           <Route path="/posts/:postId" element={<PostDetail onBack={() => navigate(-1)} />} />
           <Route path="/chats/:conversationId" element={<ChatDetail onBack={() => navigate('/chats')} />} />
         </Route>
       </Routes>
 
-      {/* Global Modal & Popup */}
       <Modal 
         isOpen={currentModal !== null} 
         onClose={handleCloseModal} 

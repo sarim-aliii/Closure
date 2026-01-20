@@ -17,6 +17,7 @@
     "@capacitor/app": "^7.1.1",
     "@capacitor/cli": "^7.3.0",
     "@capacitor/core": "^7.3.0",
+    "@capacitor/push-notifications": "^7.0.4",
     "@firebasegen/default-connector": "file:dataconnect-generated/js/default-connector",
     "firebase": "^11.8.1",
     "nodemon": "^3.1.10",

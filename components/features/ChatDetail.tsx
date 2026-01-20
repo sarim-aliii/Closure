@@ -9,7 +9,6 @@ import Image from '../icons/Image';
 import Send from '../icons/Send';
 import { useUser } from '../../contexts/UserContext'; 
 
-// Props now only need onBack (or you could handle navigation internally)
 interface RouteChatDetailProps {
   onBack: () => void;
 }
@@ -113,6 +112,36 @@ const ChatDetail: React.FC<RouteChatDetailProps> = ({ onBack }) => {
     }
   };
 
+  // Mark as Read Logic (Corrected)
+  useEffect(() => {
+    if (!conversationId || !currentUserId) return;
+
+    const markAsRead = async () => {
+      try {
+        const chatRef = doc(db, "chats", conversationId);
+        // Use dot notation to update only this user's timestamp in the map
+        await updateDoc(chatRef, {
+            [`lastReadTimestamps.${currentUserId}`]: serverTimestamp()
+        });
+      } catch (error) {
+        console.error("Error marking chat as read:", error);
+      }
+    };
+
+    // Mark as read immediately on mount or dependencies change
+    markAsRead();
+
+    // Check if the latest message is NOT from me, then mark as read again
+    // This ensures if I'm staring at the screen and they reply, it counts as read.
+    if (messages.length > 0) {
+        const lastMessage = messages[messages.length - 1];
+        if (lastMessage.senderId !== currentUserId) {
+            markAsRead();
+        }
+    }
+    
+  }, [conversationId, currentUserId, messages.length]); // Added messages.length dependency
+
   // Image Upload Handler
   const handleImageUpload = async (event: React.ChangeEvent<HTMLInputElement>) => {
     const file = event.target.files?.[0];
@@ -183,8 +212,8 @@ const ChatDetail: React.FC<RouteChatDetailProps> = ({ onBack }) => {
                 <div key={msg.id} className={`flex ${isMe ? 'justify-end' : 'justify-start'}`}>
                     {/* Message Bubble */}
                     <div className={`max-w-[75%] lg:max-w-[60%] flex flex-col ${isMe ? 'items-end' : 'items-start'}`}>
-                        <div className={`px-4 py-2 rounded-2xl shadow-sm break-words ${
-                            isMe 
+                        <div className={`px-4 py-2 rounded-2xl shadow-sm break-words
+                            ${isMe 
                             ? 'bg-indigo-600 text-white rounded-tr-none' 
                             : 'bg-white dark:bg-gray-800 text-gray-800 dark:text-gray-100 rounded-tl-none border border-gray-100 dark:border-gray-700'
                         }`}>

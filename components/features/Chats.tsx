@@ -6,7 +6,6 @@ import { db } from '../../firebase';
 import { collection, query, where, onSnapshot, orderBy } from 'firebase/firestore';
 import { useUser } from '../../contexts/UserContext';
 
-
 const Chats: React.FC<ChatsProps> = ({ onNavigate }) => {
   const { firebaseUser } = useUser();
   const [searchTerm, setSearchTerm] = useState('');
@@ -27,6 +26,23 @@ const Chats: React.FC<ChatsProps> = ({ onNavigate }) => {
         const data = doc.data();
         const otherParticipantId = data.participantIds.find((id: string) => id !== firebaseUser.uid);
         
+        // 1. Get timestamps safely
+        // Note: Firestore Timestamps need .toDate() to be comparable in JS
+        const lastMsgDate = data.lastMessageTimestamp?.toDate();
+        const myLastReadDate = data.lastReadTimestamps?.[firebaseUser.uid]?.toDate();
+
+        // 2. Calculate Unread Status
+        // If we have never read it (myLastReadDate is undefined), 
+        // OR the last message is newer than our last read time.
+        let isUnread = false;
+        if (lastMsgDate) {
+            if (!myLastReadDate) {
+                isUnread = true;
+            } else {
+                isUnread = lastMsgDate > myLastReadDate;
+            }
+        }
+
         return {
           id: doc.id,
           participants: [{
@@ -35,10 +51,11 @@ const Chats: React.FC<ChatsProps> = ({ onNavigate }) => {
              avatarUrl: data.participantAvatars?.[otherParticipantId] || null
           }],
           lastMessagePreview: data.lastMessage || "No messages yet",
-          // Handle Firestore Timestamps safely
-          lastMessageTimestamp: data.lastMessageTimestamp?.toDate(),
-          unreadCount: 0,
-          messages: [] 
+          lastMessageTimestamp: lastMsgDate,
+          // 3. Set Count (Simple boolean logic: 1 if unread, 0 if read)
+          unreadCount: isUnread ? 1 : 0, 
+          // Store the map in case we need it later, though not strictly necessary for the list view
+          lastReadTimestamps: data.lastReadTimestamps || {}
         };
       }) as ChatConversation[];
 
@@ -115,6 +132,7 @@ const Chats: React.FC<ChatsProps> = ({ onNavigate }) => {
                             <p className="text-xs text-gray-500 dark:text-gray-400 truncate pr-2 w-full">
                                 {convo.lastMessagePreview || "No messages yet."}
                             </p>
+                            {/* Display Unread Badge if count > 0 */}
                             {convo.unreadCount !== undefined && convo.unreadCount > 0 && (
                                 <span className="bg-indigo-600 text-white text-[10px] font-bold w-5 h-5 flex items-center justify-center rounded-full flex-shrink-0">
                                 {convo.unreadCount}

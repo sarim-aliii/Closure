@@ -7,7 +7,7 @@ export interface SignupProps {
 
 export interface LoginProps {
   onLoginAttempt: (email: string, password: string) => Promise<boolean>; 
-  onNavigateToSignup: () => void;
+  onNavigateToSignup?: () => void; 
   onOpenModal: (modalType: ModalType) => void;
   successMessage?: string | null;
   errorMessage?: string | null; 
@@ -202,6 +202,7 @@ export interface ChatConversation {
     unreadCount?: number;
     lastMessagePreview?: string;
     lastMessageTimestamp?: Date;
+    lastReadTimestamps?: Record<string, any>;
 }
 
 export interface ChatDetailProps {

@@ -1,4 +1,4 @@
-import * as functions from "firebase-functions";
+import * as functions from "firebase-functions/v1";
 import * as admin from "firebase-admin";
 
 admin.initializeApp();
@@ -34,17 +34,15 @@ export const sendCommentNotification = functions.firestore
     }
 
     // 3. Create the Notification Object
-    // This matches your 'Notification' interface in types.ts
     const notificationPayload = {
       message: `${commentData.authorName} commented on: "${postTitle.substring(0, 30)}..."`,
       timestamp: admin.firestore.FieldValue.serverTimestamp(),
       read: false,
       link: `/post/${postId}`, // Deep link to the post
-      type: "comment_reply" // Optional: helpful for icon logic on frontend
+      type: "comment_reply"
     };
 
     // 4. Write to the user's notification subcollection
-    // Target: users/{postAuthorId}/notifications
     try {
       await db
         .collection("users")
@@ -61,7 +59,6 @@ export const sendCommentNotification = functions.firestore
 /**
  * Trigger: When a comment is created OR deleted
  * Goal: Maintain an accurate 'commentsCount' on the parent post.
- * Note: This replaces the client-side 'increment(1)' in PostDetail.tsx
  */
 export const updatePostCommentCount = functions.firestore
   .document("posts/{postId}/comments/{commentId}")
@@ -69,16 +66,77 @@ export const updatePostCommentCount = functions.firestore
     const { postId } = context.params;
     const postRef = db.collection("posts").doc(postId);
 
-    // Determine if this was a create, delete, or update operation
     if (!change.before.exists && change.after.exists) {
-      // Document Created: Increment count
+      // Document Created
       await postRef.update({
         commentsCount: admin.firestore.FieldValue.increment(1)
       });
     } else if (change.before.exists && !change.after.exists) {
-      // Document Deleted: Decrement count
+      // Document Deleted
       await postRef.update({
         commentsCount: admin.firestore.FieldValue.increment(-1)
       });
     }
+  });
+
+/**
+ * Trigger: When a new message is added to chats/{chatId}/messages/{messageId}
+ * Goal: Send a Push Notification (FCM) to the recipient(s).
+ */
+export const sendChatNotification = functions.firestore
+  .document("chats/{chatId}/messages/{messageId}")
+  .onCreate(async (snap, context) => {
+    const { chatId } = context.params;
+    const messageData = snap.data();
+    const senderId = messageData.senderId;
+    const textContent = messageData.text || (messageData.imageUrl ? "📷 Sent an image" : "Sent a message");
+
+    // 1. Get Chat Metadata
+    const chatRef = db.collection("chats").doc(chatId);
+    const chatSnap = await chatRef.get();
+    
+    if (!chatSnap.exists) return;
+    
+    const chatData = chatSnap.data();
+    const participantIds: string[] = chatData?.participantIds || [];
+
+    // 2. Identify Recipients
+    const recipientIds = participantIds.filter(uid => uid !== senderId);
+
+    // 3. Get Sender Name
+    const senderName = chatData?.participantNames?.[senderId] || "New Message";
+
+    // 4. Send Notification to each recipient
+    const sendPromises = recipientIds.map(async (recipientId) => {
+      const userDoc = await db.collection("users").doc(recipientId).get();
+      const userData = userDoc.data();
+      const fcmToken = userData?.fcmToken; 
+
+      if (!fcmToken) {
+        console.log(`No FCM token found for user ${recipientId}`);
+        return;
+      }
+
+      const message = {
+        token: fcmToken,
+        notification: {
+          title: senderName,
+          body: textContent,
+        },
+        data: {
+          click_action: 'FLUTTER_NOTIFICATION_CLICK', 
+          type: 'CHAT_MESSAGE',
+          chatId: chatId,
+        }
+      };
+
+      try {
+        await admin.messaging().send(message);
+        console.log(`Notification sent to ${recipientId}`);
+      } catch (error) {
+        console.error(`Error sending to ${recipientId}:`, error);
+      }
+    });
+
+    await Promise.all(sendPromises);
   });
