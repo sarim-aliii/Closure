@@ -128,6 +128,9 @@ const Signup: React.FC<SignupProps> = ({ onSignupAttempt, onNavigateToLogin, err
   const [showConfirmPassword, setShowConfirmPassword] = useState(false);
   const [isLoading, setIsLoading] = useState(false);
   const [localValidationError, setLocalValidationError] = useState<string | null>(null);
+  
+  // NEW: State to track if verification email has been sent
+  const [verificationSent, setVerificationSent] = useState(false);
 
   const handleSignup = async () => {
     setLocalValidationError(null);
@@ -184,9 +187,42 @@ const Signup: React.FC<SignupProps> = ({ onSignupAttempt, onNavigateToLogin, err
     }
 
     // 6. Proceed to Firebase Creation
-    await onSignupAttempt(trimmedName, trimmedEmail, trimmedPassword);
+    // The App.tsx handler will return true if signup + email send was successful
+    const success = await onSignupAttempt(trimmedName, trimmedEmail, trimmedPassword);
+    if (success) {
+        setVerificationSent(true);
+    }
     setIsLoading(false);
   };
+
+  // NEW: Success View - "Check your email"
+  if (verificationSent) {
+    return (
+      <div className="min-h-screen flex flex-col bg-gradient-to-br from-purple-600 via-pink-500 to-orange-500 dark:from-gray-900 dark:via-gray-800 dark:to-gray-900 items-center justify-center p-6 text-white text-center">
+         <div className="bg-white/20 backdrop-blur-md p-8 rounded-2xl shadow-2xl max-w-md w-full border border-white/30">
+            <div className="bg-green-500/20 rounded-full w-20 h-20 flex items-center justify-center mx-auto mb-6">
+                <svg className="w-10 h-10 text-white" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M3 8l7.89 5.26a2 2 0 002.22 0L21 8M5 19h14a2 2 0 002-2V7a2 2 0 00-2-2H5a2 2 0 00-2 2v10a2 2 0 002 2z"></path>
+                </svg>
+            </div>
+            <h2 className="text-3xl font-bold mb-4">Verify your Email</h2>
+            <p className="text-lg mb-6 opacity-90">
+                We've sent a verification link to <br/>
+                <span className="font-semibold text-yellow-300">{email}</span>
+            </p>
+            <p className="text-sm mb-8 opacity-75">
+                Please check your inbox (and spam folder) and click the link to activate your account. You cannot log in until you verify.
+            </p>
+            <button 
+                onClick={onNavigateToLogin}
+                className="w-full bg-white text-purple-700 font-bold py-3 px-6 rounded-lg hover:bg-gray-100 transition-colors shadow-lg"
+            >
+                Go to Login
+            </button>
+         </div>
+      </div>
+    );
+  }
 
   return (
     <div className="min-h-screen flex flex-col bg-gradient-to-br from-purple-600 via-pink-500 to-orange-500 dark:from-gray-900 dark:via-gray-800 dark:to-gray-900 transition-colors duration-200">

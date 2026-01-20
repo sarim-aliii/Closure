@@ -1,32 +1,63 @@
 import React, { useState, useRef, useEffect } from 'react';
-import { ChatMessage, ChatDetailProps } from '../../types';
+import { useParams } from 'react-router-dom'; 
+import { ChatMessage } from '../../types';
 import ArrowLeft from '../icons/ArrowLeft';
 import { db, storage } from '../../firebase';
-import { collection, addDoc, query, orderBy, onSnapshot, serverTimestamp, updateDoc, doc } from 'firebase/firestore';
+import { collection, addDoc, query, orderBy, onSnapshot, serverTimestamp, updateDoc, doc, getDoc } from 'firebase/firestore'; 
 import { ref, uploadString, getDownloadURL } from 'firebase/storage';
 import Image from '../icons/Image';
 import Send from '../icons/Send';
 import { useUser } from '../../contexts/UserContext'; 
 
+// Props now only need onBack (or you could handle navigation internally)
+interface RouteChatDetailProps {
+  onBack: () => void;
+}
 
-const ChatDetail: React.FC<ChatDetailProps> = ({ 
-  conversationId, 
-  onBack, 
-  initialConversation, 
-}) => {
+const ChatDetail: React.FC<RouteChatDetailProps> = ({ onBack }) => {
+  // 2. Get conversationId from URL
+  const { conversationId } = useParams<{ conversationId: string }>();
   const { firebaseUser } = useUser(); 
   const currentUserId = firebaseUser?.uid;
 
   const [messages, setMessages] = useState<ChatMessage[]>([]);
   const [inputText, setInputText] = useState('');
+  
+  // 3. Local state for header info since we don't have initialConversation prop
+  const [conversationName, setConversationName] = useState("Chat");
+  const [conversationAvatar, setConversationAvatar] = useState<string | undefined>(undefined);
+
   const messagesEndRef = useRef<HTMLDivElement>(null);
   const fileInputRef = useRef<HTMLInputElement>(null);
-  
-  const otherParticipant = initialConversation?.participants.find(p => p.id !== currentUserId);
-  const conversationName = otherParticipant?.name || "Chat";
-  const conversationAvatar = otherParticipant?.avatarUrl;
 
-  // 1. Listen for Messages
+  // 4. Fetch Chat Metadata (Participants)
+  useEffect(() => {
+    if (!conversationId || !currentUserId) return;
+
+    const fetchChatMetadata = async () => {
+      try {
+        const chatDocRef = doc(db, "chats", conversationId);
+        const chatSnap = await getDoc(chatDocRef);
+
+        if (chatSnap.exists()) {
+          const chatData = chatSnap.data();
+          // Find the participant that is NOT the current user
+          const otherParticipant = chatData.participants?.find((p: any) => p.id !== currentUserId);
+          
+          if (otherParticipant) {
+            setConversationName(otherParticipant.name || "Chat");
+            setConversationAvatar(otherParticipant.avatarUrl);
+          }
+        }
+      } catch (error) {
+        console.error("Error fetching chat details:", error);
+      }
+    };
+
+    fetchChatMetadata();
+  }, [conversationId, currentUserId]);
+
+  // 5. Listen for Messages
   useEffect(() => {
     if (!conversationId) return;
     const q = query(
@@ -48,14 +79,14 @@ const ChatDetail: React.FC<ChatDetailProps> = ({
     return () => unsubscribe();
   }, [conversationId]);
 
-  // 2. Auto-scroll to bottom
+  // Auto-scroll to bottom
   useEffect(() => {
     messagesEndRef.current?.scrollIntoView({ behavior: "smooth" });
   }, [messages]);
 
-  // 3. Send Message Handler
+  // Send Message Handler
   const handleSend = async () => {
-    if (!inputText.trim() || !currentUserId) return;
+    if (!inputText.trim() || !currentUserId || !conversationId) return; // Ensure conversationId exists
 
     const textToSend = inputText.trim();
     setInputText(''); 
@@ -69,7 +100,7 @@ const ChatDetail: React.FC<ChatDetailProps> = ({
             type: 'text'
         });
 
-        // Update parent chat document with last message info (for list view)
+        // Update parent chat document
         const chatRef = doc(db, "chats", conversationId);
         await updateDoc(chatRef, {
             lastMessage: textToSend,
@@ -82,10 +113,10 @@ const ChatDetail: React.FC<ChatDetailProps> = ({
     }
   };
 
-  // 4. Image Upload Handler
+  // Image Upload Handler
   const handleImageUpload = async (event: React.ChangeEvent<HTMLInputElement>) => {
     const file = event.target.files?.[0];
-    if (file && currentUserId) {
+    if (file && currentUserId && conversationId) {
       const reader = new FileReader();
       reader.onloadend = async () => {
         const base64String = reader.result as string;

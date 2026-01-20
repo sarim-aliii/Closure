@@ -1,4 +1,5 @@
 import React, { useState } from 'react';
+import { Link } from 'react-router-dom'; // 1. Import Link
 import AtSymbol from '../icons/AtSymbol';
 import LockClosed from '../icons/LockClosed';
 import Eye from '../icons/Eye';
@@ -7,7 +8,7 @@ import { ModalType, LoginProps } from '../../types';
 
 const Login: React.FC<LoginProps> = ({ 
   onLoginAttempt, 
-  onNavigateToSignup, 
+  // onNavigateToSignup, // 2. Removed this prop
   onOpenModal, 
   successMessage, 
   errorMessage 
@@ -165,14 +166,13 @@ const Login: React.FC<LoginProps> = ({
         {/* Signup Link */}
         <p className="mt-6 text-center text-sm text-gray-600 dark:text-gray-400">
           Don't have an account?{' '}
-          <button 
-            type="button"
-            onClick={onNavigateToSignup} 
-            disabled={isLoading}
-            className="font-medium text-indigo-600 dark:text-indigo-400 hover:text-indigo-500 dark:hover:text-indigo-300 focus:outline-none focus:underline disabled:opacity-50"
+          {/* 3. Replaced Button with Link */}
+          <Link 
+            to="/signup"
+            className={`font-medium text-indigo-600 dark:text-indigo-400 hover:text-indigo-500 dark:hover:text-indigo-300 focus:outline-none focus:underline ${isLoading ? 'pointer-events-none opacity-50' : ''}`}
           >
             Sign up
-          </button>
+          </Link>
         </p>
       </div>
     </div>
