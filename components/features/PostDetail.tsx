@@ -3,7 +3,8 @@ import { useParams, useLocation } from 'react-router-dom';
 import { Post, FireStoreComment } from '../../types';
 import TopBar from '../layout/TopBar';
 import { db } from '../../firebase'; 
-import { collection, addDoc, query, orderBy, onSnapshot, serverTimestamp, doc, updateDoc, increment, getDoc, Timestamp } from 'firebase/firestore'; 
+// Removed 'updateDoc' and 'increment' from imports as they are no longer used client-side
+import { collection, addDoc, query, orderBy, onSnapshot, serverTimestamp, doc, getDoc } from 'firebase/firestore'; 
 import UserCircle from '../icons/UserCircle';
 import Send from '../icons/Send';
 import { useUser } from '../../contexts/UserContext';
@@ -83,6 +84,7 @@ const PostDetail: React.FC<PostDetailProps> = ({ onBack }) => {
     if (!newComment.trim() || !user || !postId) return;
     setIsSubmitting(true);
     try {
+      // 1. Create the comment
       await addDoc(collection(db, "posts", postId, "comments"), {
         text: newComment.trim(),
         authorId: user.id,
@@ -90,7 +92,10 @@ const PostDetail: React.FC<PostDetailProps> = ({ onBack }) => {
         authorAvatarUrl: user.avatarUrl || null,
         timestamp: serverTimestamp()
       });
-      await updateDoc(doc(db, "posts", postId), { commentsCount: increment(1) });
+      
+      // REMOVED: Client-side increment logic. 
+      // The Cloud Function 'updatePostCommentCount' now handles this automatically.
+      
       setNewComment('');
     } catch (error) {
       console.error("Error posting comment:", error);
