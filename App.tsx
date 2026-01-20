@@ -66,7 +66,7 @@ import {
 import { 
   doc, setDoc, updateDoc, collection, addDoc, 
   query, orderBy, getDocs, writeBatch, serverTimestamp, 
-  increment, arrayUnion, arrayRemove, Timestamp 
+  increment, arrayUnion, arrayRemove, Timestamp, getDoc, 
 } from "firebase/firestore"; 
 import { ref, uploadString, getDownloadURL } from "firebase/storage";
 
@@ -268,10 +268,29 @@ const App: React.FC = () => {
   }, []);
 
   const handleLoginAttempt = useCallback(async (emailToLogin: string, passwordToLogin: string): Promise<boolean> => {
-    setError(null); setSignupSuccessMessage(null);
+    setError(null); 
+    setSignupSuccessMessage(null);
+    
     try {
-      await signInWithEmailAndPassword(auth, emailToLogin, passwordToLogin);
+      // 1. Authenticate with Firebase Auth
+      const userCredential = await signInWithEmailAndPassword(auth, emailToLogin, passwordToLogin);
+      
+      // 2. Check if the Firestore Profile exists
+      const userDocRef = doc(db, "users", userCredential.user.uid);
+      const userSnap = await getDoc(userDocRef);
+
+      if (!userSnap.exists()) {
+        console.error("Login failed: Auth successful but Firestore profile missing for uid:", userCredential.user.uid);
+        
+        await signOut(auth);
+        
+        setError("Account exists, but profile data is corrupt or missing. Please contact support or Sign Up again.");
+        return false;
+      }
+
+      // 3. Success - The existing useEffect will handle navigation
       return true;
+
     } catch (error: any) {
       console.error("Firebase Login Error:", error);
       if (error.code === 'auth/user-not-found' || error.code === 'auth/wrong-password' || error.code === 'auth/invalid-credential') {

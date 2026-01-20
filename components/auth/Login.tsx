@@ -37,8 +37,14 @@ const Login: React.FC<LoginProps> = ({
       return;
     }
 
-    await onLoginAttempt(trimmedEmail, trimmedPassword); 
-    setIsLoading(false);
+    try {
+      await onLoginAttempt(trimmedEmail, trimmedPassword); 
+    } catch (error: any) {
+      console.error("Login Error Caught in Component:", error);
+      setLocalValidationError(error.message || "An unexpected error occurred.");
+    } finally {
+      setIsLoading(false);
+    }
   };
 
   const handleForgotPassword = () => {
