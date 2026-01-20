@@ -160,6 +160,7 @@ const Login: React.FC<LoginProps> = ({
         <p className="mt-6 text-center text-sm text-gray-600 dark:text-gray-400">
           Don't have an account?{' '}
           <button 
+            type="button"
             onClick={onNavigateToSignup} 
             disabled={isLoading}
             className="font-medium text-indigo-600 dark:text-indigo-400 hover:text-indigo-500 dark:hover:text-indigo-300 focus:outline-none focus:underline disabled:opacity-50"

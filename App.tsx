@@ -41,6 +41,7 @@ import Acknowledgements from './components/features/Acknowledgements';
 import OrderSuccess from './components/features/OrderSuccess'; 
 import ViewFreeMaterialContent from './components/features/ViewFreeMaterial';
 import AddProduct from './components/features/AddProduct'; 
+import AdminDashboard from './components/features/AdminDashboard';
 
 // 4. Layout Components
 import TopBar from './components/layout/TopBar';
@@ -161,7 +162,9 @@ const App: React.FC = () => {
         setCurrentView(AppView.MAIN);
       }
     } else if (!loading && !user) {
-       setCurrentView(AppView.LOGIN);
+       if (currentView !== AppView.SIGNUP) {
+          setCurrentView(AppView.LOGIN);
+       }
     }
   }, [user, loading, currentView]);
 
@@ -667,7 +670,17 @@ const App: React.FC = () => {
       case AppView.SIGNUP:
         return <Signup onSignupAttempt={handleSignupAttempt} onNavigateToLogin={navigateToLogin} errorMessage={error} />;
       case AppView.SETTINGS:
-        return <Settings version={appVersion} onLogout={handleLogout} onOpenModal={handleOpenModal} currentTheme={{ mode: theme }} onSetTheme={setTheme} onBack={handleBackToMain} addPopupMessage={addPopupMessage} />;
+        return <Settings 
+                    version={appVersion} 
+                    onLogout={handleLogout} 
+                    onOpenModal={handleOpenModal} 
+                    currentTheme={{ mode: theme }} 
+                    onSetTheme={setTheme} 
+                    onBack={handleBackToMain} 
+                    addPopupMessage={addPopupMessage} 
+                    userEmail={user?.email}
+                    onNavigateToAdmin={() => setCurrentView(AppView.ADMIN_DASHBOARD)}
+                />;
       case AppView.CART:
         return <Cart cartItems={cartItems} onRemoveItem={handleRemoveFromCart} onUpdateQuantity={handleUpdateCartQuantity} onNavigate={onNavigate} onBack={handleBackToMain} />;
       case AppView.CHAT_DETAIL:
@@ -722,6 +735,8 @@ const App: React.FC = () => {
                 onConfirmPayment={handleConfirmOrderPayment}
                 onBack={() => setCurrentView(AppView.PAYMENT_DETAILS)}
                />;
+      case AppView.ADMIN_DASHBOARD:
+        return <AdminDashboard onClose={handleBackToMain} />;
       case AppView.MAIN:
       default:
         if (!user) return <Login onLoginAttempt={handleLoginAttempt} onNavigateToSignup={navigateToSignup} onOpenModal={handleOpenModal} errorMessage={error} />;

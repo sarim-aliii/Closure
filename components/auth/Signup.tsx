@@ -36,13 +36,81 @@ const checkDomainIsValid = async (domain: string): Promise<boolean> => {
     
     // Fallback list for offline/dev testing
     const FALLBACK_DOMAINS = [
-      'harvard.edu', 
-      'mit.edu', 
+      // Global / Generic
+      'harvard.edu',
+      'mit.edu',
       'stanford.edu',
-      'iitb.ac.in',
+      'ox.ac.uk',
+      'cam.ac.uk',
       'college.edu',
+
+      // IITs
+      'iitb.ac.in',
+      'iitd.ac.in',
+      'iitm.ac.in',
+      'iitk.ac.in',
+      'iitkgp.ac.in',
+      'iitg.ac.in',
+      'iitr.ac.in',
+      'iitbhu.ac.in',
+      'iiti.ac.in',
+      'iith.ac.in',
+
+      // NITs
+      'nitt.edu',
+      'nitc.ac.in',
+      'nitw.ac.in',
+      'nitrkl.ac.in',
+      'nitk.ac.in',
+      'nitdgp.ac.in',
+      'nitp.ac.in',
+      'nith.ac.in',
+
+      // IIITs
+      'iiit.ac.in',
+      'iiitd.ac.in',
+      'iiita.ac.in',
+      'iiitb.ac.in',
+      'iiitdmj.ac.in',
+
+      // IISERs
+      'iiserpune.ac.in',
+      'iiserkol.ac.in',
+      'iiserb.ac.in',
+      'iisermohali.ac.in',
+      'iisertvm.ac.in',
+
+      // Central Universities
+      'du.ac.in',
+      'jnu.ac.in',
+      'jmi.ac.in',
+      'amu.ac.in',
+      'uohyd.ac.in',
+
+      // State & Deemed Universities
+      'annauniv.edu',
+      'unipune.ac.in',
+      'mu.ac.in',
+      'caluniv.ac.in',
+      'jadavpuruniversity.in',
+
+      // Private Universities / Colleges
+      'bits-pilani.ac.in',
+      'vit.ac.in',
+      'srmuniv.ac.in',
+      'manipal.edu',
+      'amity.edu',
+      'lpu.in',
+      'sastra.edu',
+
+      // Popular Engineering Colleges
       'bmsce.ac.in',
+      'rvce.edu.in',
+      'pes.edu',
+      'msrit.edu',
+      'vtu.ac.in'
     ];
+
     
     // Simulate network delay
     await new Promise(resolve => setTimeout(resolve, 500));

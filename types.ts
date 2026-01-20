@@ -34,6 +34,7 @@ export enum AppView {
   POST_DETAIL = 'POST_DETAIL', 
   PAYMENT_DETAILS = 'PAYMENT_DETAILS',
   UPI_PAYMENT = 'UPI_PAYMENT',
+  ADMIN_DASHBOARD = 'admin_dashboard',
 }
 
 export enum MainAppTab {
