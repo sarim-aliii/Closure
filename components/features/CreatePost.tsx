@@ -7,6 +7,34 @@ import Photo from '../icons/Photo';
 import XCircle from '../icons/XCircle';
 import { useUser } from '../../contexts/UserContext'; 
 
+// Helper to resize image client-side
+const generateThumbnail = (base64String: string, maxWidth = 300): Promise<string> => {
+  return new Promise((resolve, reject) => {
+    const img = new Image();
+    img.src = base64String;
+    img.onload = () => {
+      const canvas = document.createElement('canvas');
+      const ctx = canvas.getContext('2d');
+      if (!ctx) return reject(new Error('Canvas context not available'));
+
+      // Calculate new dimensions
+      const scaleFactor = maxWidth / img.width;
+      const newWidth = maxWidth;
+      const newHeight = img.height * scaleFactor;
+
+      canvas.width = newWidth;
+      canvas.height = newHeight;
+
+      // Draw and compress
+      ctx.drawImage(img, 0, 0, newWidth, newHeight);
+      
+      // Export as JPEG with 0.7 quality
+      resolve(canvas.toDataURL('image/jpeg', 0.7));
+    };
+    img.onerror = (error) => reject(error);
+  });
+};
+
 const CreatePost: React.FC<CreatePostProps> = ({ onSubmit, onClose }) => {
   const { user, firebaseUser } = useUser(); 
   
@@ -20,8 +48,8 @@ const CreatePost: React.FC<CreatePostProps> = ({ onSubmit, onClose }) => {
   const handleImageChange = (event: React.ChangeEvent<HTMLInputElement>) => {
     const file = event.target.files?.[0];
     if (file) {
-      if (file.size > 2 * 1024 * 1024) { 
-        alert("Image size should not exceed 2MB.");
+      if (file.size > 5 * 1024 * 1024) { // Increased to 5MB since we resize client-side
+        alert("Image size should not exceed 5MB.");
         if (fileInputRef.current) fileInputRef.current.value = ""; 
         return;
       }
@@ -56,37 +84,44 @@ const CreatePost: React.FC<CreatePostProps> = ({ onSubmit, onClose }) => {
     }
 
     setIsLoading(true);
-    let uploadedImageUrl: string | undefined = undefined;
+    let uploadedImageUrl: string | null = null;
+    let uploadedThumbnailUrl: string | null = null;
 
     try {
-      // 1. Generate Post ID first so we can attach it to the image metadata
       const newPostRef = doc(collection(db, "posts"));
       const postId = newPostRef.id;
 
-      // 2. Image Upload Logic with Metadata
+      // --- CLIENT-SIDE RESIZING & UPLOAD ---
       if (imageBase64) {
-        const imageName = `${Date.now()}_post_image`;
-        const imageRef = ref(storage, `post_images/${firebaseUser.uid}/${imageName}`);
-        
-        // Attach postId to metadata so the Extension/Cloud Function can link back to Firestore
-        const metadata: UploadMetadata = {
-          customMetadata: {
-            postId: postId
-          }
-        };
+        const timestamp = Date.now();
+        const originalName = `${timestamp}_original`;
+        const thumbName = `${timestamp}_thumb`;
 
-        await uploadString(imageRef, imageBase64, 'data_url', metadata);
+        // 1. Upload Original
+        const imageRef = ref(storage, `posts/${postId}/${originalName}`);
+        await uploadString(imageRef, imageBase64, 'data_url');
         uploadedImageUrl = await getDownloadURL(imageRef);
+
+        // 2. Generate & Upload Thumbnail
+        try {
+            const thumbBase64 = await generateThumbnail(imageBase64, 300); // Resize to 300px width
+            const thumbRef = ref(storage, `posts/${postId}/${thumbName}`);
+            await uploadString(thumbRef, thumbBase64, 'data_url');
+            uploadedThumbnailUrl = await getDownloadURL(thumbRef);
+        } catch (resizeError) {
+            console.warn("Thumbnail generation failed, using original as fallback", resizeError);
+            uploadedThumbnailUrl = uploadedImageUrl; // Fallback
+        }
       }
       
       const collegeDomain = user.email ? user.email.split('@')[1].toLowerCase() : 'general';
 
-      // 3. Save to Firestore using setDoc and the pre-generated ID
+      // 3. Save to Firestore (Both URLs immediately available!)
       await setDoc(newPostRef, {
           title: title.trim(),
           content: content.trim(),
-          imageUrl: uploadedImageUrl || null,
-          thumbnailUrl: null, // Initialize as null, waiting for Extension to update it
+          imageUrl: uploadedImageUrl,
+          thumbnailUrl: uploadedThumbnailUrl, 
           collegeDomain: collegeDomain,
           authorId: firebaseUser.uid,
           authorName: user.name || "Anonymous Student", 
@@ -98,7 +133,6 @@ const CreatePost: React.FC<CreatePostProps> = ({ onSubmit, onClose }) => {
           timestamp: serverTimestamp()
       });
 
-      // 4. Close Modal on Success
       onClose();
 
     } catch (error) {
@@ -142,7 +176,7 @@ const CreatePost: React.FC<CreatePostProps> = ({ onSubmit, onClose }) => {
 
       <div className="mb-6">
         <label htmlFor="postImage" className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2 flex items-center gap-2">
-          <Photo className="w-4 h-4" /> Add Image (Optional, max 2MB)
+          <Photo className="w-4 h-4" /> Add Image (Optional, max 5MB)
         </label>
         
         <input

@@ -14,6 +14,7 @@ import ChatBubble from '../icons/ChatBubble';
 import { useUser } from '../../contexts/UserContext';
 import { Virtuoso, VirtuosoHandle, StateSnapshot } from 'react-virtuoso';
 import { Haptics, ImpactStyle } from '@capacitor/haptics';
+import LazyImage from '../ui/LazyImage';
 
 let savedScrollState: StateSnapshot | undefined;
 
@@ -167,15 +168,22 @@ const Community: React.FC<ExtendedCommunityProps> = ({
 
   const renderPost = (index: number, post: Post) => {
     const hasLiked = likedPostIds.has(post.id);
+    const displayImage = post.thumbnailUrl || post.imageUrl;
+    
     return (
       <div className="pb-4 px-1">
         <div className="bg-white dark:bg-gray-800 rounded-lg shadow-sm border border-gray-100 dark:border-gray-700 overflow-hidden transition-colors duration-200">
           <div className="p-5">
             <div className="flex items-center mb-3">
               {post.authorAvatarUrl ? (
-                <img src={post.authorAvatarUrl} alt={post.authorName} className="w-10 h-10 rounded-full mr-3 object-cover border border-gray-200 dark:border-gray-600"/>
+                <LazyImage 
+                  src={post.authorAvatarUrl} 
+                  alt={post.authorName || "User"} 
+                  containerClassName="w-10 h-10 rounded-full mr-3 shrink-0"
+                  className="w-full h-full object-cover"
+                />
               ) : (
-                <UserCircle className="w-10 h-10 text-gray-400 dark:text-gray-500 mr-3"/>
+                <UserCircle className="w-10 h-10 text-gray-400 dark:text-gray-500 mr-3 shrink-0"/>
               )}
               <div>
                 <p className="font-semibold text-gray-800 dark:text-gray-100 text-sm">{post.authorName || "Anonymous"}</p>
@@ -184,10 +192,18 @@ const Community: React.FC<ExtendedCommunityProps> = ({
                 </p>
               </div>
             </div>
+            
             <h2 className="text-lg font-bold text-gray-900 dark:text-gray-50 mb-2 leading-tight">{post.title}</h2>
-            {post.imageUrl && (
-              <img src={post.imageUrl} alt={post.title} className="rounded-lg max-w-full h-auto my-3 max-h-96 object-contain bg-gray-50 dark:bg-gray-900 border border-gray-100 dark:border-gray-700" />
+            
+            {displayImage && (
+              <LazyImage 
+                src={displayImage} 
+                alt={post.title} 
+                containerClassName="rounded-lg w-full my-3 bg-gray-50 dark:bg-gray-900 min-h-[200px] border border-gray-100 dark:border-gray-700" 
+                className="w-full h-auto max-h-96 object-contain"
+              />
             )}
+            
             <p className="text-gray-700 dark:text-gray-300 text-sm line-clamp-4 mb-4 whitespace-pre-wrap">{post.content}</p>
             
             <div className="flex items-center space-x-6 pt-3 border-t border-gray-100 dark:border-gray-700">

@@ -1,6 +1,7 @@
 {
   "name": "mad",
   "version": "1.0.0",
+  "type": "module",
   "main": "index.js",
   "scripts": {
     "test": "echo \"Error: no test specified\" && exit 1",
@@ -26,6 +27,7 @@
     "framer-motion": "^12.27.5",
     "konsta": "^5.0.6",
     "nodemon": "^3.1.10",
+    "prop-types": "^15.8.1",
     "react": "^19.1.0",
     "react-dom": "^19.1.0",
     "react-router-dom": "^7.6.2",
