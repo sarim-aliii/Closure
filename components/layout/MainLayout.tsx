@@ -1,9 +1,11 @@
 import React from 'react';
-import { Outlet, useLocation, useNavigate } from 'react-router-dom';
+import { useLocation, useNavigate } from 'react-router-dom';
 import TopBar from './TopBar';
 import Sidebar from './Sidebar';
 import BottomNav from './BottomNav';
 import { MainAppTab, UserProfile, Notification, ModalType } from '../../types';
+import AnimatedOutlet from './AnimatedOutlet';
+
 
 interface MainLayoutProps {
   user: UserProfile;
@@ -55,7 +57,7 @@ const MainLayout: React.FC<MainLayoutProps> = ({
   };
 
   return (
-    <div className="h-screen w-screen flex flex-col">
+    <div className="h-screen w-screen flex flex-col bg-gray-100 dark:bg-gray-900 transition-colors duration-200">
       <TopBar 
         title="Closure" 
         userName={user.name} 
@@ -77,8 +79,8 @@ const MainLayout: React.FC<MainLayoutProps> = ({
         onSwitchToProfileTab={() => navigate('/profile')}
       />
 
-      <main className="flex-grow overflow-y-auto">
-        <Outlet />
+      <main className="flex-grow overflow-y-auto overflow-x-hidden relative">
+        <AnimatedOutlet />
       </main>
 
       <BottomNav activeTab={activeTab} onTabChange={handleTabChange} />
