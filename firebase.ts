@@ -8,6 +8,7 @@ import {
 import { getStorage } from 'firebase/storage';
 import { getMessaging } from 'firebase/messaging';
 
+
 const firebaseConfig = {
   apiKey: import.meta.env.VITE_FIREBASE_API_KEY,
   authDomain: import.meta.env.VITE_FIREBASE_AUTH_DOMAIN,

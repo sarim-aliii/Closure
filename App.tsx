@@ -52,18 +52,16 @@ import AddProduct from './components/features/AddProduct';
 import AdminDashboard from './components/features/AdminDashboard';
 
 
-import { auth, db, storage, messaging } from './firebase'; 
+import { auth, db, messaging } from './firebase'; 
 import { getToken, onMessage } from "firebase/messaging"; 
 
 import { 
-  signOut, signInWithEmailAndPassword, updatePassword, 
-  sendPasswordResetEmail, reauthenticateWithCredential, EmailAuthProvider 
+  signOut, signInWithEmailAndPassword, sendEmailVerification, createUserWithEmailAndPassword
 } from "firebase/auth"; 
 import { 
   doc, updateDoc, collection, addDoc, query, orderBy, getDocs, 
-  writeBatch, serverTimestamp, increment, arrayUnion, arrayRemove, Timestamp, getDoc 
+  writeBatch, Timestamp, getDoc, setDoc 
 } from "firebase/firestore"; 
-import { ref, uploadString, getDownloadURL } from "firebase/storage";
 
 export type Theme = 'light' | 'dark';
 
@@ -160,7 +158,7 @@ const App: React.FC = () => {
             PushNotifications.addListener('pushNotificationActionPerformed', (notification) => {
                const data = notification.notification.data;
                if (data.chatId) {
-                  navigate(`/chats/${data.chatId}`);
+                 navigate(`/chats/${data.chatId}`);
                }
             });
           }
@@ -226,10 +224,14 @@ const App: React.FC = () => {
   // Initialize Mock Data
   useEffect(() => {
     setAnnouncements([{ id: 'anno1', title: 'Mid-term Exams Schedule Released', content: 'The schedule for the upcoming mid-term examinations has been released.', fullContent: 'Detailed content here...', date: 'Oct 26, 2023' }]);
+
     setEvents([{ id: 'event1', title: 'Annual Sports Day', date: 'Nov 10, 2023', time: '09:00 AM', location: 'University Ground', description: 'Sports day!', fullDescription: 'Full description...'}]);
     setDownloadableContent([ { id: 'dl1', name: 'Introduction to Programming (PDF)', type: 'PDF', size: '2.5 MB', url: '#' }, ]);
+
     setFreeMaterials([ { id: 'fm1', title: 'Understanding React Hooks', description: 'A comprehensive guide.', type: 'article', content: 'React Hooks content...' }]);
+
     setTestimonialsData([ {id: 't1', studentName: 'Alice Wonderland', course: 'Computer Science', testimonialText: 'Great platform!', avatarUrl: 'https://picsum.photos/seed/alice/100/100'} ]);
+    
     setChatConversations([
         { id: 'chat1', participants: [{id: 'closure_admin', name: 'Closure Admin', avatarUrl: 'https://picsum.photos/seed/closure_avatar/40/40'}], messages: [{id: 'msg1', senderId: 'closure_admin', text: 'Welcome to Closure! How can we help?', timestamp: new Date(Date.now() - 200000).toISOString()}], unreadCount: 1, lastMessagePreview: 'Welcome to Closure!', lastMessageTimestamp: new Date(Date.now() - 200000) },
     ]);
@@ -280,6 +282,50 @@ const App: React.FC = () => {
       return false;
     }
   }, [navigate]);
+
+  // [CHANGED] NEW SIGNUP HANDLER
+  const handleSignupAttempt = useCallback(async (name: string, email: string, pass: string): Promise<boolean> => {
+    setError(null);
+    try {
+      // 1. Create the user in Firebase Auth
+      const userCredential = await createUserWithEmailAndPassword(auth, email, pass);
+      const { user } = userCredential;
+
+      // 2. Send the verification email (CRITICAL STEP)
+      await sendEmailVerification(user);
+
+      // 3. Create the User Profile in Firestore
+      // This ensures when they log in later, their profile exists
+      await setDoc(doc(db, "users", user.uid), {
+        id: user.uid,
+        name: name,
+        email: email,
+        role: 'student', // Default role
+        createdAt: Timestamp.now(),
+        notificationPreferences: {
+          newAnnouncements: true,
+          chatMentions: true,
+          eventReminders: true,
+          promotionalUpdates: false,
+        },
+        // Initialize other fields as needed
+        cart: [],
+        fcmToken: null
+      });
+
+      return true;
+    } catch (error: any) {
+      console.error("Signup failed", error);
+      if (error.code === 'auth/email-already-in-use') {
+        setError("This email is already registered.");
+      } else if (error.code === 'auth/weak-password') {
+        setError("Password should be at least 6 characters.");
+      } else {
+        setError(error.message || "Failed to create account.");
+      }
+      return false;
+    }
+  }, []);
 
   const handleAddToCart = useCallback((product: Product) => {
     setCartItems(prev => {
@@ -338,7 +384,7 @@ const App: React.FC = () => {
       case ModalType.CREATE_POST:
         return <CreatePost onSubmit={async (title, content, img) => { handleCloseModal(); addPopupMessage("Post created", "success"); }} onClose={handleCloseModal} currentUserId={firebaseUser?.uid} />;
       case ModalType.ADD_PRODUCT:
-         return <AddProduct onSubmit={async () => { handleCloseModal(); addPopupMessage("Product added", "success"); }} onClose={handleCloseModal} />;
+          return <AddProduct onSubmit={async () => { handleCloseModal(); addPopupMessage("Product added", "success"); }} onClose={handleCloseModal} />;
       case ModalType.TESTIMONIALS: return <TestimonialComponent testimonials={testimonialsData} />;
       case ModalType.PRIVACY_POLICY: return <PrivacyPolicy onClose={handleCloseModal} />;
       case ModalType.HELP_SUPPORT: return <HelpSupport onStartSupportChat={() => { handleCloseModal(); navigate('/chats/support'); }} />;
@@ -377,7 +423,7 @@ const App: React.FC = () => {
         
         <Route path="/signup" element={
             <Signup 
-                onSignupAttempt={async () => true} 
+                onSignupAttempt={handleSignupAttempt} 
                 onNavigateToLogin={() => navigate('/login')} 
                 errorMessage={error} 
             />

@@ -1,206 +1,223 @@
-import React, { useState, useRef } from 'react';
-import { storage, db } from '../../firebase'; 
-import { ref, uploadString, getDownloadURL, UploadMetadata } from "firebase/storage";
-import { collection, doc, setDoc, serverTimestamp } from "firebase/firestore";
-import { CreatePostProps } from '../../types';
-import Photo from '../icons/Photo';
-import XCircle from '../icons/XCircle';
-import { useUser } from '../../contexts/UserContext'; 
+import * as functions from "firebase-functions/v1";
+import * as admin from "firebase-admin";
+import * as path from "path";
+import * as os from "os";
+import * as fs from "fs-extra";
+import sharp from "sharp";
 
-const CreatePost: React.FC<CreatePostProps> = ({ onSubmit, onClose }) => {
-  const { user, firebaseUser } = useUser(); 
-  
-  const [title, setTitle] = useState('');
-  const [content, setContent] = useState('');
-  const [imagePreview, setImagePreview] = useState<string | null>(null);
-  const [imageBase64, setImageBase64] = useState<string | undefined>(undefined);
-  const [isLoading, setIsLoading] = useState(false);
-  const fileInputRef = useRef<HTMLInputElement>(null);
+admin.initializeApp();
+const db = admin.firestore();
 
-  const handleImageChange = (event: React.ChangeEvent<HTMLInputElement>) => {
-    const file = event.target.files?.[0];
-    if (file) {
-      if (file.size > 2 * 1024 * 1024) { 
-        alert("Image size should not exceed 2MB.");
-        if (fileInputRef.current) fileInputRef.current.value = ""; 
-        return;
-      }
-      const reader = new FileReader();
-      reader.onloadend = () => {
-        setImagePreview(reader.result as string);
-        setImageBase64(reader.result as string); 
-      };
-      reader.readAsDataURL(file);
-    } else {
-        removeImage();
-    }
-  };
+/**
+ * Trigger: When a new comment is created in posts/{postId}/comments/{commentId}
+ * Goal: Send a notification to the author of the post.
+ */
+export const sendCommentNotification = functions.firestore
+  .document("posts/{postId}/comments/{commentId}")
+  .onCreate(async (snap, context) => {
+    const { postId } = context.params;
+    const commentData = snap.data();
+    
+    // 1. Fetch the parent Post to find who to notify
+    const postRef = db.collection("posts").doc(postId);
+    const postSnap = await postRef.get();
 
-  const removeImage = () => {
-    setImagePreview(null);
-    setImageBase64(undefined);
-    if (fileInputRef.current) {
-        fileInputRef.current.value = ""; 
-    }
-  }
-
-  const handleSubmit = async () => {
-    if (!title.trim() || !content.trim()) {
-      alert("Please provide a title and content for your post.");
+    if (!postSnap.exists) {
+      console.log("Post does not exist, skipping notification.");
       return;
     }
-    
-    if (!user || !firebaseUser) {
-        alert("You must be logged in to post.");
-        return;
+
+    const postData = postSnap.data();
+    const postAuthorId = postData?.authorId;
+    const postTitle = postData?.title || "your post";
+
+    // 2. Safety Check: Do not notify if the commenter is the post author
+    if (commentData.authorId === postAuthorId) {
+      console.log("User commented on their own post, skipping notification.");
+      return;
     }
 
-    setIsLoading(true);
-    let uploadedImageUrl: string | undefined = undefined;
+    // 3. Create the Notification Object
+    const notificationPayload = {
+      message: `${commentData.authorName} commented on: "${postTitle.substring(0, 30)}..."`,
+      timestamp: admin.firestore.FieldValue.serverTimestamp(),
+      read: false,
+      link: `/post/${postId}`, // Deep link to the post
+      type: "comment_reply"
+    };
 
+    // 4. Write to the user's notification subcollection
     try {
-      // 1. Generate Post ID first so we can attach it to the image metadata
-      const newPostRef = doc(collection(db, "posts"));
-      const postId = newPostRef.id;
-
-      // 2. Image Upload Logic with Metadata
-      if (imageBase64) {
-        const imageName = `${Date.now()}_post_image`;
-        const imageRef = ref(storage, `post_images/${firebaseUser.uid}/${imageName}`);
+      await db
+        .collection("users")
+        .doc(postAuthorId)
+        .collection("notifications")
+        .add(notificationPayload);
         
-        // Attach postId to metadata so the Extension/Cloud Function can link back to Firestore
-        const metadata: UploadMetadata = {
-          customMetadata: {
-            postId: postId
-          }
-        };
-
-        await uploadString(imageRef, imageBase64, 'data_url', metadata);
-        uploadedImageUrl = await getDownloadURL(imageRef);
-      }
-      
-      const collegeDomain = user.email ? user.email.split('@')[1].toLowerCase() : 'general';
-
-      // 3. Save to Firestore using setDoc and the pre-generated ID
-      await setDoc(newPostRef, {
-          title: title.trim(),
-          content: content.trim(),
-          imageUrl: uploadedImageUrl || null,
-          thumbnailUrl: null, // Initialize as null, waiting for Extension to update it
-          collegeDomain: collegeDomain,
-          authorId: firebaseUser.uid,
-          authorName: user.name || "Anonymous Student", 
-          authorEmail: user.email,
-          authorAvatarUrl: user.avatarUrl || null,
-          isAnonymous: false,
-          upvotes: 0,
-          commentCount: 0,
-          timestamp: serverTimestamp()
-      });
-
-      // 4. Close Modal on Success
-      onClose();
-
+      console.log(`Notification sent to user ${postAuthorId}`);
     } catch (error) {
-      console.error("Error creating post: ", error);
-      alert("Failed to create post. Please try again.");
-    } finally {
-      setIsLoading(false); 
+      console.error("Error sending notification:", error);
     }
-  };
+  });
 
-  return (
-    <div className="p-1">
-      <div className="mb-4">
-        <label htmlFor="postTitle" className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">
-          Post Title <span className="text-red-500">*</span>
-        </label>
-        <input
-          type="text"
-          id="postTitle"
-          value={title}
-          onChange={(e) => setTitle(e.target.value)}
-          className="w-full p-2.5 border border-gray-300 dark:border-gray-600 rounded-lg shadow-sm focus:ring-indigo-500 focus:border-indigo-500 bg-white dark:bg-gray-700 text-gray-900 dark:text-gray-100 placeholder-gray-400 dark:placeholder-gray-500"
-          placeholder="Enter a catchy title"
-          disabled={isLoading}
-        />
-      </div>
-      <div className="mb-4">
-        <label htmlFor="postContent" className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">
-          Your Content <span className="text-red-500">*</span>
-        </label>
-        <textarea
-          id="postContent"
-          rows={4} 
-          value={content}
-          onChange={(e) => setContent(e.target.value)}
-          className="w-full p-2.5 border border-gray-300 dark:border-gray-600 rounded-lg shadow-sm focus:ring-indigo-500 focus:border-indigo-500 bg-white dark:bg-gray-700 text-gray-900 dark:text-gray-100 placeholder-gray-400 dark:placeholder-gray-500"
-          placeholder="Share your thoughts in detail..."
-          disabled={isLoading}
-        />
-      </div>
+/**
+ * Trigger: When a comment is created OR deleted
+ * Goal: Maintain an accurate 'commentsCount' on the parent post.
+ */
+export const updatePostCommentCount = functions.firestore
+  .document("posts/{postId}/comments/{commentId}")
+  .onWrite(async (change, context) => {
+    const { postId } = context.params;
+    const postRef = db.collection("posts").doc(postId);
 
-      <div className="mb-6">
-        <label htmlFor="postImage" className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2 flex items-center gap-2">
-          <Photo className="w-4 h-4" /> Add Image (Optional, max 2MB)
-        </label>
-        
-        <input
-          type="file"
-          id="postImage"
-          ref={fileInputRef}
-          accept="image/png, image/jpeg, image/gif"
-          onChange={handleImageChange}
-          className="block w-full text-sm text-gray-500 dark:text-gray-400
-            file:mr-4 file:py-2.5 file:px-4
-            file:rounded-md file:border-0
-            file:text-sm file:font-semibold
-            file:bg-indigo-50 dark:file:bg-indigo-900/30 file:text-indigo-700 dark:file:text-indigo-300
-            hover:file:bg-indigo-100 dark:hover:file:bg-indigo-800
-            cursor-pointer"
-          disabled={isLoading}
-        />
-        
-        {imagePreview && (
-          <div className="mt-4 relative inline-block">
-            <img src={imagePreview} alt="Selected preview" className="max-h-40 rounded-lg border border-gray-300 dark:border-gray-600 shadow-sm" />
-            <button 
-                onClick={removeImage}
-                disabled={isLoading}
-                className="absolute -top-2 -right-2 bg-red-500 text-white rounded-full p-1.5 hover:bg-red-600 shadow-md transition-colors"
-                aria-label="Remove image"
-            >
-                <XCircle className="w-4 h-4"/>
-            </button>
-          </div>
-        )}
-      </div>
+    if (!change.before.exists && change.after.exists) {
+      // Document Created
+      await postRef.update({
+        commentsCount: admin.firestore.FieldValue.increment(1)
+      });
+    } else if (change.before.exists && !change.after.exists) {
+      // Document Deleted
+      await postRef.update({
+        commentsCount: admin.firestore.FieldValue.increment(-1)
+      });
+    }
+  });
 
-      <div className="flex justify-end space-x-3 pt-4 border-t border-gray-200 dark:border-gray-700 mt-2">
-        <button
-          type="button"
-          onClick={onClose}
-          className="px-4 py-2 text-sm font-medium text-gray-700 dark:text-gray-200 bg-white border border-gray-300 rounded-md shadow-sm hover:bg-gray-50 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-indigo-500 dark:bg-gray-700 dark:border-gray-600 dark:hover:bg-gray-600 transition-colors"
-          disabled={isLoading}
-        >
-          Cancel
-        </button>
-        <button
-          type="button"
-          onClick={handleSubmit}
-          disabled={isLoading || !title.trim() || !content.trim()}
-          className="inline-flex justify-center px-4 py-2 text-sm font-medium text-white bg-indigo-600 border border-transparent rounded-md shadow-sm hover:bg-indigo-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-indigo-500 disabled:opacity-50 disabled:cursor-not-allowed transition-colors"
-        >
-          {isLoading ? (
-             <span className="flex items-center">
-               <svg className="animate-spin -ml-1 mr-2 h-4 w-4 text-white" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24"><circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4"></circle><path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"></path></svg>
-               Posting...
-             </span>
-          ) : 'Create Post'}
-        </button>
-      </div>
-    </div>
-  );
-};
+/**
+ * Trigger: When a new message is added to chats/{chatId}/messages/{messageId}
+ * Goal: Send a Push Notification (FCM) to the recipient(s).
+ */
+export const sendChatNotification = functions.firestore
+  .document("chats/{chatId}/messages/{messageId}")
+  .onCreate(async (snap, context) => {
+    const { chatId } = context.params;
+    const messageData = snap.data();
+    const senderId = messageData.senderId;
+    const textContent = messageData.text || (messageData.imageUrl ? "📷 Sent an image" : "Sent a message");
 
-export default CreatePost;
+    // 1. Get Chat Metadata
+    const chatRef = db.collection("chats").doc(chatId);
+    const chatSnap = await chatRef.get();
+    
+    if (!chatSnap.exists) return;
+    
+    const chatData = chatSnap.data();
+    const participantIds: string[] = chatData?.participantIds || [];
+
+    // 2. Identify Recipients
+    const recipientIds = participantIds.filter(uid => uid !== senderId);
+
+    // 3. Get Sender Name
+    const senderName = chatData?.participantNames?.[senderId] || "New Message";
+
+    // 4. Send Notification to each recipient
+    const sendPromises = recipientIds.map(async (recipientId) => {
+      const userDoc = await db.collection("users").doc(recipientId).get();
+      const userData = userDoc.data();
+      const fcmToken = userData?.fcmToken; 
+
+      if (!fcmToken) {
+        console.log(`No FCM token found for user ${recipientId}`);
+        return;
+      }
+
+      const message = {
+        token: fcmToken,
+        notification: {
+          title: senderName,
+          body: textContent,
+        },
+        data: {
+          click_action: 'FLUTTER_NOTIFICATION_CLICK', // Keeping strictly as per your request
+          type: 'CHAT_MESSAGE',
+          chatId: chatId,
+        }
+      };
+
+      try {
+        await admin.messaging().send(message);
+        console.log(`Notification sent to ${recipientId}`);
+      } catch (error) {
+        console.error(`Error sending to ${recipientId}:`, error);
+      }
+    });
+
+    await Promise.all(sendPromises);
+  });
+
+/**
+ * Trigger: When a file is uploaded to Storage
+ * Goal: Resize profile images and update the User Firestore document.
+ */
+export const onProfileImageUpload = functions.storage.object().onFinalize(async (object) => {
+  const fileBucket = object.bucket;
+  const filePath = object.name; 
+  const contentType = object.contentType; 
+
+  // 1. Validation Checks
+  if (!filePath || !contentType) return console.log("No file path or content type.");
+  if (!contentType.startsWith("image/")) return console.log("This is not an image.");
+  
+  // Only process images in the "profile_images" folder
+  if (!filePath.startsWith("profile_images/")) return console.log("Not a profile image.");
+
+  // Avoid infinite loops: Don't process images that are already resized
+  if (filePath.includes("resized")) return console.log("Already resized.");
+
+  const fileName = path.basename(filePath);
+  const bucket = admin.storage().bucket(fileBucket);
+
+  // 2. Metadata Extraction
+  // We need the userId attached in the frontend to know which doc to update
+  const metadata = object.metadata;
+  const userId = metadata?.userId;
+
+  if (!userId) {
+    return console.log("No userId found in metadata. Cannot update Firestore.");
+  }
+
+  // 3. Download the file to temp storage
+  const tempFilePath = path.join(os.tmpdir(), fileName);
+  await bucket.file(filePath).download({ destination: tempFilePath });
+  
+  // 4. Resize the Image (e.g., 200x200 thumbnail)
+  const thumbFileName = `thumb_${fileName}`;
+  const thumbFilePath = path.join(os.tmpdir(), thumbFileName);
+
+  await sharp(tempFilePath)
+    .resize(200, 200, { fit: 'cover' }) // Square crop for avatars
+    .toFile(thumbFilePath);
+
+  // 5. Upload the Resized Image
+  // We store it in a 'resized' subfolder to keep things organized
+  const thumbStoragePath = `profile_images/${userId}/resized/${thumbFileName}`;
+  
+  await bucket.upload(thumbFilePath, {
+    destination: thumbStoragePath,
+    metadata: {
+      contentType: contentType, 
+      metadata: { userId: userId } 
+    }
+  });
+
+  // 6. Get the Public URL
+  // We generate a long-lived signed URL for the avatar
+  const fileRef = bucket.file(thumbStoragePath);
+  
+  const [downloadUrl] = await fileRef.getSignedUrl({
+    action: 'read',
+    expires: '03-01-2125' // Valid for ~100 years
+  });
+
+  // 7. Update Firestore
+  await db.collection("users").doc(userId).update({
+    avatarUrl: downloadUrl
+  });
+
+  // Cleanup temp files
+  await fs.remove(tempFilePath);
+  await fs.remove(thumbFilePath);
+
+  console.log(`Avatar updated for user ${userId}`);
+  return null;
+});

@@ -1,7 +1,7 @@
 import React, { useState, useEffect, useRef } from 'react';
 import { UserProfile, Order, AccordionSectionProps, Post } from '../../types'; 
 import { storage, db } from '../../firebase';
-import { ref, uploadString, getDownloadURL } from "firebase/storage";
+import { ref, uploadString, getDownloadURL, UploadMetadata } from "firebase/storage";
 import { collection, query, where, getDocs, orderBy, doc, updateDoc } from "firebase/firestore";
 import { useUser } from '../../contexts/UserContext'; 
 
@@ -18,11 +18,10 @@ import HashField from '../icons/HashField';
 import Logout from '../icons/Logout';
 import Calendar from '../icons/Calendar';
 import Gender from '../icons/Gender';
-import AddressIcon from '../icons/Address'; // Renamed to avoid conflict
+import AddressIcon from '../icons/Address'; 
 import Orders from '../icons/Orders';
 import Star from '../icons/Star';
 
-// Updated Props Interface: Removed 'user' and 'onUpdateProfile'
 interface ProfileViewProps {
   onLogout: () => void;
 }
@@ -34,9 +33,11 @@ const AccordionSection: React.FC<AccordionSectionProps> = ({ title, badgeNumber,
 
   return (
     <div className="mb-3 bg-white dark:bg-gray-800 rounded-lg shadow-sm border border-gray-100 dark:border-gray-700 overflow-hidden transition-colors duration-200">
-      <button
+      <div
         onClick={() => setIsOpen(!isOpen)}
-        className="w-full flex justify-between items-center p-3 focus:outline-none hover:bg-gray-50 dark:hover:bg-gray-700/50 transition-colors"
+        className="w-full flex justify-between items-center p-3 focus:outline-none hover:bg-gray-50 dark:hover:bg-gray-700/50 transition-colors cursor-pointer"
+        role="button"
+        tabIndex={0}
       >
         <div className="flex items-center">
           {badgeNumber !== undefined && (
@@ -49,7 +50,11 @@ const AccordionSection: React.FC<AccordionSectionProps> = ({ title, badgeNumber,
         <div className="flex items-center">
           {onEditToggle && ( 
             <button 
-              onClick={(e) => { e.stopPropagation(); onEditToggle(); if(!isOpen && !isEditing) setIsOpen(true); }} 
+              onClick={(e) => { 
+                e.stopPropagation();
+                onEditToggle(); 
+                if(!isOpen && !isEditing) setIsOpen(true); 
+              }} 
               className="text-indigo-600 dark:text-indigo-400 text-xs font-semibold mr-3 hover:underline px-2 py-1 rounded hover:bg-indigo-50 dark:hover:bg-indigo-900/30 transition-colors"
             >
               {isEditing ? 'Cancel' : 'Edit'}
@@ -57,7 +62,7 @@ const AccordionSection: React.FC<AccordionSectionProps> = ({ title, badgeNumber,
           )}
           {isOpen ? <ChevronUp className="w-5 h-5 text-gray-400" /> : <ChevronDown className="w-5 h-5 text-gray-400" />}
         </div>
-      </button>
+      </div>
       {isOpen && <div className={`p-4 border-t border-gray-100 dark:border-gray-700 ${isEditing ? 'bg-gray-50/50 dark:bg-gray-700/20' : ''}`}>{children}</div>}
     </div>
   );
@@ -106,7 +111,7 @@ const EditableProfileField: React.FC<{label: string, value: string, name: keyof 
 // --- Main Component ---
 
 const Profile: React.FC<ProfileViewProps> = ({ onLogout }) => {
-  const { user, refreshProfile } = useUser(); // Get user from context
+  const { user, refreshProfile } = useUser(); 
   const [activeTab, setActiveTab] = useState('INFO');
   const tabs = ['INFO', 'POSTS', 'ORDERS', 'COURSES']; 
 
@@ -198,20 +203,21 @@ const Profile: React.FC<ProfileViewProps> = ({ onLogout }) => {
         const userRef = doc(db, 'users', user.id);
         const updates = { ...editedUser };
         
-
         if (section === 'address') {
              updates.address = {
-                 streetAddress: updates.streetAddress || user.address?.streetAddress,
-                 city: updates.city || user.address?.city,
-                 state: updates.state || user.address?.state,
-                 pincode: updates.postalCode || user.address?.pincode,
-                 country: updates.country || user.address?.country,
+                 fullName: user.name || '',
+                 mobileNumber: user.mobileNumber || '',           
+                 streetAddress: updates.streetAddress || user.address?.streetAddress || '',
+                 city: updates.city || user.address?.city || '',
+                 state: updates.state || user.address?.state || '',
+                 pincode: updates.postalCode || user.address?.pincode || '',               
+                 country: updates.country || user.address?.country || '',
                  addressType: user.address?.addressType || 'Home'
              };
         }
 
         await updateDoc(userRef, updates);
-        await refreshProfile(); // Sync context
+        await refreshProfile();
 
         if (section === 'basic') setIsBasicInfoEditing(false);
         if (section === 'personal') setIsPersonalInfoEditing(false);
@@ -227,26 +233,29 @@ const Profile: React.FC<ProfileViewProps> = ({ onLogout }) => {
   const handleProfilePictureChange = async (event: React.ChangeEvent<HTMLInputElement>) => {
     const file = event.target.files?.[0];
     if (file && user?.email) { 
-      if (file.size > 1 * 1024 * 1024) { 
-        alert("Image size should not exceed 1MB.");
+      if (file.size > 5 * 1024 * 1024) { 
+        alert("Image size should not exceed 5MB.");
         return;
       }
+      
       setIsUploadingAvatar(true);
       const reader = new FileReader();
       
       reader.onloadend = async () => {
         const base64DataUrl = reader.result as string;
         try {
-          const userIdForPath = user.email.replace(/[^a-zA-Z0-9]/g, '_'); 
-          const avatarStorageRef = ref(storage, `user_avatars/${userIdForPath}/${file.name}`);
+          const storagePath = `profile_images/${user.id}/${Date.now()}_${file.name}`;
+          const avatarStorageRef = ref(storage, storagePath);
           
-          await uploadString(avatarStorageRef, base64DataUrl, 'data_url'); 
-          const downloadURL = await getDownloadURL(avatarStorageRef);
+          const metadata: UploadMetadata = {
+            customMetadata: {
+              userId: user.id
+            }
+          };
           
-          const userRef = doc(db, 'users', user.id);
-          await updateDoc(userRef, { avatarUrl: downloadURL });
-          refreshProfile();
-
+          // Upload with metadata
+          await uploadString(avatarStorageRef, base64DataUrl, 'data_url', metadata);
+          alert("Profile picture uploading... It will update automatically in a few moments.");
         } catch (error) {
           console.error("Error uploading avatar: ", error);
           alert("Failed to upload profile picture.");
@@ -330,7 +339,7 @@ const Profile: React.FC<ProfileViewProps> = ({ onLogout }) => {
             
             <div className="flex flex-wrap items-center mt-3 gap-2">
                 <span className="inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium bg-purple-100 text-purple-800 dark:bg-purple-900/30 dark:text-purple-300 border border-purple-200 dark:border-purple-800/50">
-                    {user.organizationCode === 'STUDENT' ? '🎓 Student' : '🏫 Faculty'}
+                    {user.organizationCode === 'STUDENT' ? '雌 Student' : '将 Faculty'}
                 </span>
                 <span className="inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium bg-amber-100 text-amber-800 dark:bg-amber-900/30 dark:text-amber-300 border border-amber-200 dark:border-amber-800/50">
                     <Star className="w-3.5 h-3.5 mr-1 text-amber-500"/>
@@ -453,7 +462,7 @@ const Profile: React.FC<ProfileViewProps> = ({ onLogout }) => {
                             <p className="text-sm text-gray-600 dark:text-gray-300 line-clamp-2 mb-3 leading-relaxed">{post.content}</p>
                             <div className="flex text-xs font-medium text-gray-500 dark:text-gray-400 justify-between items-center border-t border-gray-100 dark:border-gray-700 pt-3">
                                 <span>{new Date(post.timestamp).toLocaleDateString()}</span>
-                                <span className="text-indigo-600 dark:text-indigo-400 bg-indigo-50 dark:bg-indigo-900/30 px-2 py-1 rounded">{post.upvotes} Likes • {post.commentsCount} Comments</span>
+                                <span className="text-indigo-600 dark:text-indigo-400 bg-indigo-50 dark:bg-indigo-900/30 px-2 py-1 rounded">{post.upvotes} Likes 窶｢ {post.commentsCount} Comments</span>
                             </div>
                         </div>
                     ))
@@ -499,7 +508,7 @@ const Profile: React.FC<ProfileViewProps> = ({ onLogout }) => {
                   
                   <div className="flex justify-between items-center pt-3 border-t border-gray-100 dark:border-gray-700 bg-gray-50 dark:bg-gray-700/30 -mx-5 -mb-5 p-4 rounded-b-xl">
                       <p className="text-sm text-gray-600 dark:text-gray-300">Paid via <span className="font-semibold text-gray-800 dark:text-gray-100">{order.paymentMethod}</span></p>
-                      <p className="text-lg font-bold text-gray-900 dark:text-white">₹{order.totalAmount.toFixed(2)}</p>
+                      <p className="text-lg font-bold text-gray-900 dark:text-white">竄ｹ{order.totalAmount.toFixed(2)}</p>
                   </div>
                 </div>
               ))

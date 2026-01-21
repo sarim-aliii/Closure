@@ -4,8 +4,8 @@
   "main": "index.js",
   "scripts": {
     "test": "echo \"Error: no test specified\" && exit 1",
-    "dev": "vite",
-    "build": "vite build",
+    "dev": "node generate-sw.js && vite",
+    "build": "node generate-sw.js && tsc && vite build",
     "preview": "vite preview"
   },
   "keywords": [],
@@ -31,6 +31,7 @@
     "@types/react-dom": "^19.1.6",
     "@vitejs/plugin-react": "^4.5.1",
     "autoprefixer": "^10.4.21",
+    "dotenv": "^17.2.3",
     "postcss": "^8.5.4",
     "tailwindcss": "^4.1.8",
     "typescript": "^5.8.3"
