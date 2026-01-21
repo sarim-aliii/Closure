@@ -16,7 +16,7 @@ const BottomNav: React.FC<BottomNavProps> = ({ activeTab, onTabChange }) => {
   ];
 
   return (
-    <div className="fixed bottom-0 left-0 right-0 bg-white dark:bg-gray-800 border-t border-gray-200 dark:border-gray-700 flex justify-around items-center shadow-top h-16 z-10 safe-area-bottom">
+    <div className="fixed bottom-0 left-0 right-0 bg-white dark:bg-gray-800 border-t border-gray-200 dark:border-gray-700 flex justify-around items-center shadow-top h-auto min-h-[4rem] pb-[env(safe-area-inset-bottom)] pt-2 z-10 safe-area-bottom">
       {navItems.map((item) => {
         const IconComponent = item.icon;
         const isActive = activeTab === item.id;

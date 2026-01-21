@@ -3,13 +3,14 @@ import { App as CapacitorApp } from '@capacitor/app';
 import { Routes, Route, useNavigate, Navigate, useLocation } from 'react-router-dom';
 import { Capacitor } from '@capacitor/core'; 
 import { PushNotifications } from '@capacitor/push-notifications'; 
+import { StatusBar, Style } from '@capacitor/status-bar';
 
 import { 
-  AppView, ModalType,
+  ModalType,
   Product, CartItem, Notification as AppNotification, Announcement, Event,
   DownloadableItem, FreeMaterialItem, Testimonial,
-  ChatConversation, PopupMessage, NotificationPreferences,
-  Post, Address, Order 
+  ChatConversation, PopupMessage,
+  Address
 } from './types';
 
 import { useUser } from './contexts/UserContext';
@@ -103,7 +104,7 @@ const App: React.FC = () => {
   const [cartItems, setCartItems] = useState<CartItem[]>([]);
   const [notifications, setNotifications] = useState<AppNotification[]>([]);
   
-  // Mock/Initial Data State
+  // Mock/Initial Data State (Now initialized to empty arrays)
   const [announcements, setAnnouncements] = useState<Announcement[]>([]);
   const [events, setEvents] = useState<Event[]>([]);
   const [downloadableContent, setDownloadableContent] = useState<DownloadableItem[]>([]);
@@ -125,6 +126,22 @@ const App: React.FC = () => {
     const id = String(Date.now());
     setPopupMessages(prev => [...prev, { id, message, type }]);
     setTimeout(() => setPopupMessages(prev => prev.filter(p => p.id !== id)), 3000);
+  }, []);
+
+  // --- Status Bar & Safe Area Setup ---
+  useEffect(() => {
+    if (Capacitor.isNativePlatform()) {
+      const configureStatusBar = async () => {
+        try {
+          // Make the status bar transparent and overlay the webview
+          await StatusBar.setOverlaysWebView({ overlay: true });
+          await StatusBar.setStyle({ style: Style.Dark }); 
+        } catch (err) {
+          console.warn('Status bar configuration failed', err);
+        }
+      };
+      configureStatusBar();
+    }
   }, []);
 
   // --- NOTIFICATION SETUP (Native + Web) ---
@@ -221,22 +238,6 @@ const App: React.FC = () => {
     }
   }, [user, firebaseUser]);
 
-  // Initialize Mock Data
-  useEffect(() => {
-    setAnnouncements([{ id: 'anno1', title: 'Mid-term Exams Schedule Released', content: 'The schedule for the upcoming mid-term examinations has been released.', fullContent: 'Detailed content here...', date: 'Oct 26, 2023' }]);
-
-    setEvents([{ id: 'event1', title: 'Annual Sports Day', date: 'Nov 10, 2023', time: '09:00 AM', location: 'University Ground', description: 'Sports day!', fullDescription: 'Full description...'}]);
-    setDownloadableContent([ { id: 'dl1', name: 'Introduction to Programming (PDF)', type: 'PDF', size: '2.5 MB', url: '#' }, ]);
-
-    setFreeMaterials([ { id: 'fm1', title: 'Understanding React Hooks', description: 'A comprehensive guide.', type: 'article', content: 'React Hooks content...' }]);
-
-    setTestimonialsData([ {id: 't1', studentName: 'Alice Wonderland', course: 'Computer Science', testimonialText: 'Great platform!', avatarUrl: 'https://picsum.photos/seed/alice/100/100'} ]);
-    
-    setChatConversations([
-        { id: 'chat1', participants: [{id: 'closure_admin', name: 'Closure Admin', avatarUrl: 'https://picsum.photos/seed/closure_avatar/40/40'}], messages: [{id: 'msg1', senderId: 'closure_admin', text: 'Welcome to Closure! How can we help?', timestamp: new Date(Date.now() - 200000).toISOString()}], unreadCount: 1, lastMessagePreview: 'Welcome to Closure!', lastMessageTimestamp: new Date(Date.now() - 200000) },
-    ]);
-  }, []);
-
   // Theme Handling
   useEffect(() => {
     const root = document.documentElement;
@@ -283,7 +284,6 @@ const App: React.FC = () => {
     }
   }, [navigate]);
 
-  // [CHANGED] NEW SIGNUP HANDLER
   const handleSignupAttempt = useCallback(async (name: string, email: string, pass: string): Promise<boolean> => {
     setError(null);
     try {

@@ -20,7 +20,7 @@ const TopBar: React.FC<TopBarProps> = ({
   cartItemCount = 0,
   onCartClick,
 }) => {
-  const { user } = useUser(); // Access global user state directly
+  const { user } = useUser();
   const [showNotificationsDropdown, setShowNotificationsDropdown] = useState(false);
 
   const unreadCount = notifications.filter((n: Notification) => !n.read).length;
@@ -35,7 +35,7 @@ const TopBar: React.FC<TopBarProps> = ({
   }
 
   return (
-    <div className="bg-indigo-700 dark:bg-indigo-800 text-white p-4 flex items-center justify-between shadow-md sticky top-0 z-30 transition-colors duration-200">
+    <div className="bg-indigo-700 dark:bg-indigo-800 text-white pt-[calc(env(safe-area-inset-top)+1rem)] pb-4 px-4 flex items-center justify-between shadow-md sticky top-0 z-30 transition-colors duration-200">
       
       {/* LEFT SECTION: Navigation & Title */}
       <div className="flex items-center gap-3">
