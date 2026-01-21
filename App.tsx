@@ -4,6 +4,7 @@ import { Routes, Route, useNavigate, Navigate, useLocation } from 'react-router-
 import { Capacitor } from '@capacitor/core'; 
 import { PushNotifications } from '@capacitor/push-notifications'; 
 import { StatusBar, Style } from '@capacitor/status-bar';
+import { App as KonstaApp } from 'konsta/react';
 
 import { 
   ModalType,
@@ -411,7 +412,7 @@ const App: React.FC = () => {
   };
 
   return (
-    <>
+    <KonstaApp theme="ios" safeAreas={true}>
       <Routes>
         <Route path="/login" element={
           <Login 
@@ -475,7 +476,7 @@ const App: React.FC = () => {
           <Popup key={p.id} message={p.message} type={p.type} onClose={() => setPopupMessages(prev => prev.filter(msg => msg.id !== p.id))} />
         ))}
       </div>
-    </>
+    </KonstaApp>
   );
 };
 

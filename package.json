@@ -23,6 +23,7 @@
     "@firebasegen/default-connector": "file:dataconnect-generated/js/default-connector",
     "firebase": "^11.8.1",
     "framer-motion": "^12.27.5",
+    "konsta": "^5.0.6",
     "nodemon": "^3.1.10",
     "react": "^19.1.0",
     "react-dom": "^19.1.0",

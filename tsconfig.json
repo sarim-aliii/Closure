@@ -24,8 +24,14 @@
     "types": ["vite/client"]
   },
   "include": [
+    ".",
     "src", 
     "firebase.ts",
     "vite-env.d.ts"
+  ],
+  "exclude": [
+    "node_modules",
+    "dist",
+    "functions"
   ]
 }
