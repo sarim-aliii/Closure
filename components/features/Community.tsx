@@ -1,10 +1,14 @@
-import React, { useState, useMemo, useEffect, useRef } from 'react';
+import React, { useState, useMemo, useEffect, useRef, useCallback } from 'react';
 import { Post, ModalType } from '../../types';
 import UserCircle from '../icons/UserCircle';
 import Search from '../icons/Search';
 import Plus from '../icons/Plus';
 import { db } from '../../firebase';
-import { collection, query, where, orderBy, onSnapshot } from 'firebase/firestore';
+import { 
+  collection, query, where, orderBy, 
+  getDocs, limit, startAfter, 
+  QueryDocumentSnapshot, DocumentData 
+} from 'firebase/firestore';
 import ThumbsUp from '../icons/ThumbsUp';
 import ChatBubble from '../icons/ChatBubble';
 import { useUser } from '../../contexts/UserContext';
@@ -12,6 +16,7 @@ import { Virtuoso, VirtuosoHandle, StateSnapshot } from 'react-virtuoso';
 
 
 let savedScrollState: StateSnapshot | undefined;
+
 interface ExtendedCommunityProps {
   onNavigateToPostDetail: (post: Post) => void; 
   onToggleLike: (postId: string) => void;
@@ -27,9 +32,13 @@ const Community: React.FC<ExtendedCommunityProps> = ({
   const { user } = useUser();
   const [searchTerm, setSearchTerm] = useState('');
   const [posts, setPosts] = useState<Post[]>([]);
-  const [loading, setLoading] = useState(true);
+  const [lastVisible, setLastVisible] = useState<QueryDocumentSnapshot<DocumentData> | null>(null);
   
-  // 2. Ref to control Virtuoso and get its state
+  // Loading States
+  const [loading, setLoading] = useState(true); 
+  const [isFetchingMore, setIsFetchingMore] = useState(false);
+  const [hasMore, setHasMore] = useState(true); 
+
   const virtuosoRef = useRef<VirtuosoHandle>(null);
 
   const userDomain = useMemo(() => {
@@ -40,33 +49,84 @@ const Community: React.FC<ExtendedCommunityProps> = ({
     return new Set(user?.likedPostIds || []);
   }, [user]);
 
+  // --- 1. Initial Fetch (Batched) ---
   useEffect(() => {
-    if (userDomain) {
+    const fetchInitialPosts = async () => {
+      if (!userDomain) {
+        setLoading(false);
+        return;
+      }
+      
+      // Reset state on domain change or initial mount
+      setLoading(true);
+      setPosts([]); 
+      setLastVisible(null);
+      setHasMore(true);
+
+      try {
         const q = query(
             collection(db, "posts"),
             where("collegeDomain", "==", userDomain),
-            orderBy("timestamp", "desc")
+            orderBy("timestamp", "desc"),
+            limit(20)
         );
 
-        const unsubscribe = onSnapshot(q, (snapshot) => {
-            const fetchedPosts = snapshot.docs.map(doc => ({
-                id: doc.id,
-                ...doc.data(),
-                timestamp: doc.data().timestamp?.toDate() || new Date() 
-            })) as Post[];
-            
-            setPosts(fetchedPosts);
-            setLoading(false);
-        }, (err) => {
-            console.error("Error fetching community posts:", err);
-            setLoading(false);
-        });
-
-        return () => unsubscribe();
-    } else {
+        const snapshot = await getDocs(q);
+        
+        const fetchedPosts = snapshot.docs.map(doc => ({
+            id: doc.id,
+            ...doc.data(),
+            timestamp: doc.data().timestamp?.toDate() || new Date() 
+        })) as Post[];
+        
+        setPosts(fetchedPosts);
+        setLastVisible(snapshot.docs[snapshot.docs.length - 1] || null);
+        setHasMore(snapshot.docs.length === 20); 
+      } catch (err) {
+        console.error("Error fetching community posts:", err);
+      } finally {
         setLoading(false);
-    }
+      }
+    };
+
+    fetchInitialPosts();
   }, [userDomain]);
+
+  // --- 2. Load More (Pagination) ---
+  const loadMorePosts = useCallback(async () => {
+    if (!hasMore || isFetchingMore || !userDomain || !lastVisible) return;
+
+    setIsFetchingMore(true);
+    try {
+      const q = query(
+        collection(db, "posts"),
+        where("collegeDomain", "==", userDomain),
+        orderBy("timestamp", "desc"),
+        startAfter(lastVisible),
+        limit(20)
+      );
+
+      const snapshot = await getDocs(q);
+      
+      if (!snapshot.empty) {
+        const newPosts = snapshot.docs.map(doc => ({
+            id: doc.id,
+            ...doc.data(),
+            timestamp: doc.data().timestamp?.toDate() || new Date() 
+        })) as Post[];
+
+        setPosts(prev => [...prev, ...newPosts]);
+        setLastVisible(snapshot.docs[snapshot.docs.length - 1]);
+        setHasMore(snapshot.docs.length === 20);
+      } else {
+        setHasMore(false);
+      }
+    } catch (err) {
+      console.error("Error fetching more posts:", err);
+    } finally {
+      setIsFetchingMore(false);
+    }
+  }, [hasMore, isFetchingMore, userDomain, lastVisible]);
 
   // 3. Save scroll state when component unmounts
   useEffect(() => {
@@ -91,7 +151,6 @@ const Community: React.FC<ExtendedCommunityProps> = ({
     );
   }, [posts, searchTerm]);
 
-  // Helper to render individual post items
   const renderPost = (index: number, post: Post) => {
     const hasLiked = likedPostIds.has(post.id);
     return (
@@ -137,11 +196,21 @@ const Community: React.FC<ExtendedCommunityProps> = ({
     );
   };
 
+  const renderFooter = () => {
+    if (isFetchingMore) {
+       return (
+         <div className="flex justify-center py-4">
+            <div className="animate-spin rounded-full h-6 w-6 border-b-2 border-indigo-600"></div>
+         </div>
+       );
+    }
+    return null;
+  };
+
   return (
-    // 4. Changed container to h-full flex flex-col to manage internal scrolling
     <div className="bg-gray-100 dark:bg-gray-900 h-full flex flex-col relative transition-colors duration-200">
       
-      {/* Header Section - Now Fixed at Top with padding */}
+      {/* Header Section */}
       <div className="flex flex-col sm:flex-row justify-between items-center mb-6 px-5 pt-4 flex-shrink-0">
         <div className="mb-3 sm:mb-0 w-full sm:w-auto">
              <h1 className="text-2xl font-bold text-gray-800 dark:text-gray-100">Community Feed</h1>
@@ -164,7 +233,7 @@ const Community: React.FC<ExtendedCommunityProps> = ({
         </div>
       </div>
       
-      {/* Content Area - Virtualized List takes remaining space */}
+      {/* Content Area */}
       <div className="flex-grow px-4 overflow-hidden">
         {loading ? (
             <div className="flex justify-center pt-10">
@@ -183,13 +252,16 @@ const Community: React.FC<ExtendedCommunityProps> = ({
                 </p>
             </div>
         ) : (
-            // 5. Virtuoso Configuration for Scroll Restoration
             <Virtuoso
                 ref={virtuosoRef}
-                style={{ height: '100%' }} // Takes up the space of the flex container
+                style={{ height: '100%' }} 
                 data={filteredPosts}
                 itemContent={renderPost}
                 restoreStateFrom={savedScrollState}
+                endReached={loadMorePosts} 
+                components={{
+                    Footer: renderFooter
+                }}
                 className="space-y-4 pb-20"
             />
         )}
