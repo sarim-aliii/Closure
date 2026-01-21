@@ -8,6 +8,7 @@ import ChatBubble from '../icons/ChatBubble';
 import ArrowUp from '../icons/ArrowUp';
 import ArrowDown from '../icons/ArrowDown';
 import { useUser } from '../../contexts/UserContext';
+import SkeletonPost from '../ui/SkeletonPost'; // Import the skeleton component
 
 interface ExtendedHomeProps extends HomeProps {
   onNavigate?: (view: AppView, data?: any) => void;
@@ -124,9 +125,9 @@ const Home: React.FC<ExtendedHomeProps> = ({ onOpenModal, announcements, events,
         <h3 className="text-lg font-semibold text-gray-700 dark:text-gray-200 mb-3 px-1">Recent Discussions</h3>
 
         {loading ? (
-          <div className="text-center py-10">
-            <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-indigo-600 mx-auto mb-2"></div>
-            <p className="text-gray-500 text-sm">Loading campus feed...</p>
+          <div className="space-y-4">
+             {/* Render 3 Skeletons while loading */}
+             {[...Array(3)].map((_, i) => <SkeletonPost key={i} />)}
           </div>
         ) : posts.length > 0 ? (
           <div className="space-y-4">
@@ -136,21 +137,6 @@ const Home: React.FC<ExtendedHomeProps> = ({ onOpenModal, announcements, events,
                 className="bg-white dark:bg-gray-800 rounded-lg shadow-sm p-4 border border-gray-100 dark:border-gray-700 cursor-pointer hover:shadow-md transition-all"
                 onClick={() => onNavigate && onNavigate(AppView.POST_DETAIL, { postId: post.id })}
               >
-                <h4 className="text-md font-bold text-gray-900 dark:text-white mb-2 leading-tight">{post.title}</h4>
-
-                {(post.thumbnailUrl || post.imageUrl) && (
-                  <div className="mb-3">
-                    <img
-                      src={post.thumbnailUrl || post.imageUrl}
-                      alt="Post attachment"
-                      className="w-full h-48 object-cover rounded-md bg-gray-100 dark:bg-gray-700"
-                      loading="lazy"
-                    />
-                  </div>
-                )}
-
-                <p className="text-sm text-gray-600 dark:text-gray-300 mb-4 leading-relaxed line-clamp-3 whitespace-pre-wrap">{post.content}</p>
-                
                 {/* Post Header */}
                 <div className="flex items-center mb-3">
                   <div className="w-8 h-8 rounded-full bg-gradient-to-tr from-indigo-500 to-purple-500 flex items-center justify-center text-white font-bold text-xs mr-3 shadow-sm">
@@ -168,6 +154,18 @@ const Home: React.FC<ExtendedHomeProps> = ({ onOpenModal, announcements, events,
 
                 {/* Content */}
                 <h4 className="text-md font-bold text-gray-900 dark:text-white mb-2 leading-tight">{post.title}</h4>
+
+                {(post.thumbnailUrl || post.imageUrl) && (
+                  <div className="mb-3">
+                    <img
+                      src={post.thumbnailUrl || post.imageUrl}
+                      alt="Post attachment"
+                      className="w-full h-48 object-cover rounded-md bg-gray-100 dark:bg-gray-700"
+                      loading="lazy"
+                    />
+                  </div>
+                )}
+
                 <p className="text-sm text-gray-600 dark:text-gray-300 mb-4 leading-relaxed line-clamp-3 whitespace-pre-wrap">{post.content}</p>
 
                 {/* Action Bar */}
