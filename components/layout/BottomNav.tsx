@@ -1,5 +1,6 @@
 import React from 'react';
 import { Tabbar, TabbarLink } from 'konsta/react';
+import { Haptics, ImpactStyle } from '@capacitor/haptics';
 import { MainAppTab, BottomNavProps } from '../../types';
 import Home from '../icons/Home';
 import Store from '../icons/Store'; 
@@ -17,6 +18,13 @@ const BottomNav: React.FC<BottomNavProps> = ({ activeTab, onTabChange }) => {
     { id: MainAppTab.PROFILE, label: 'Profile', icon: Profile },
   ];
 
+  const handleTabClick = async (tabId: MainAppTab) => {
+    if (activeTab !== tabId) {
+      await Haptics.impact({ style: ImpactStyle.Light });
+      onTabChange(tabId);
+    }
+  };
+
   return (
     <Tabbar 
       labels 
@@ -31,7 +39,7 @@ const BottomNav: React.FC<BottomNavProps> = ({ activeTab, onTabChange }) => {
             key={item.id}
             active={isActive}
             label={item.label}
-            onClick={() => onTabChange(item.id)}
+            onClick={() => handleTabClick(item.id)}
             icon={
               <IconComponent 
                 className="w-7 h-7 mb-1" 

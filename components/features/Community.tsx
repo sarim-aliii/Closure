@@ -13,7 +13,7 @@ import ThumbsUp from '../icons/ThumbsUp';
 import ChatBubble from '../icons/ChatBubble';
 import { useUser } from '../../contexts/UserContext';
 import { Virtuoso, VirtuosoHandle, StateSnapshot } from 'react-virtuoso';
-
+import { Haptics, ImpactStyle } from '@capacitor/haptics';
 
 let savedScrollState: StateSnapshot | undefined;
 
@@ -31,13 +31,15 @@ const Community: React.FC<ExtendedCommunityProps> = ({
 }) => {
   const { user } = useUser();
   const [searchTerm, setSearchTerm] = useState('');
+  
+  // Data State
   const [posts, setPosts] = useState<Post[]>([]);
   const [lastVisible, setLastVisible] = useState<QueryDocumentSnapshot<DocumentData> | null>(null);
   
   // Loading States
-  const [loading, setLoading] = useState(true); 
+  const [loading, setLoading] = useState(true);
   const [isFetchingMore, setIsFetchingMore] = useState(false);
-  const [hasMore, setHasMore] = useState(true); 
+  const [hasMore, setHasMore] = useState(true);
 
   const virtuosoRef = useRef<VirtuosoHandle>(null);
 
@@ -49,7 +51,22 @@ const Community: React.FC<ExtendedCommunityProps> = ({
     return new Set(user?.likedPostIds || []);
   }, [user]);
 
-  // --- 1. Initial Fetch (Batched) ---
+  const handleLike = async (postId: string) => {
+    await Haptics.impact({ style: ImpactStyle.Medium });
+    onToggleLike(postId);
+  };
+
+  const handlePostClick = async (post: Post) => {
+    await Haptics.impact({ style: ImpactStyle.Light });
+    onNavigateToPostDetail(post);
+  };
+
+  const handleCreatePost = async () => {
+    await Haptics.impact({ style: ImpactStyle.Light });
+    onOpenModal(ModalType.CREATE_POST);
+  };
+
+  // --- Initial Fetch ---
   useEffect(() => {
     const fetchInitialPosts = async () => {
       if (!userDomain) {
@@ -57,7 +74,6 @@ const Community: React.FC<ExtendedCommunityProps> = ({
         return;
       }
       
-      // Reset state on domain change or initial mount
       setLoading(true);
       setPosts([]); 
       setLastVisible(null);
@@ -81,7 +97,7 @@ const Community: React.FC<ExtendedCommunityProps> = ({
         
         setPosts(fetchedPosts);
         setLastVisible(snapshot.docs[snapshot.docs.length - 1] || null);
-        setHasMore(snapshot.docs.length === 20); 
+        setHasMore(snapshot.docs.length === 20);
       } catch (err) {
         console.error("Error fetching community posts:", err);
       } finally {
@@ -92,7 +108,7 @@ const Community: React.FC<ExtendedCommunityProps> = ({
     fetchInitialPosts();
   }, [userDomain]);
 
-  // --- 2. Load More (Pagination) ---
+  // --- Pagination ---
   const loadMorePosts = useCallback(async () => {
     if (!hasMore || isFetchingMore || !userDomain || !lastVisible) return;
 
@@ -128,7 +144,7 @@ const Community: React.FC<ExtendedCommunityProps> = ({
     }
   }, [hasMore, isFetchingMore, userDomain, lastVisible]);
 
-  // 3. Save scroll state when component unmounts
+  // Save scroll state
   useEffect(() => {
     return () => {
       if (virtuosoRef.current) {
@@ -140,9 +156,7 @@ const Community: React.FC<ExtendedCommunityProps> = ({
   }, []);
 
   const filteredPosts = useMemo(() => {
-    if (!searchTerm.trim()) {
-      return posts;
-    }
+    if (!searchTerm.trim()) return posts;
     const lowerSearchTerm = searchTerm.toLowerCase();
     return posts.filter(post => 
       post.authorName?.toLowerCase().includes(lowerSearchTerm) ||
@@ -178,13 +192,13 @@ const Community: React.FC<ExtendedCommunityProps> = ({
             
             <div className="flex items-center space-x-6 pt-3 border-t border-gray-100 dark:border-gray-700">
                 <button 
-                    onClick={() => onToggleLike(post.id)}
+                    onClick={() => handleLike(post.id)} 
                     className={`flex items-center text-sm transition-colors ${hasLiked ? 'text-indigo-600 dark:text-indigo-400 font-semibold' : 'text-gray-500 dark:text-gray-400 hover:text-indigo-600 dark:hover:text-indigo-400'}`}
                 >
                     <ThumbsUp className={`mr-1.5 w-5 h-5 ${hasLiked ? 'fill-current' : ''}`} /> {post.upvotes || 0}
                 </button>
                 <button 
-                    onClick={() => onNavigateToPostDetail(post)} 
+                    onClick={() => handlePostClick(post)} 
                     className="flex items-center text-sm text-gray-500 dark:text-gray-400 hover:text-indigo-600 dark:hover:text-indigo-400 transition-colors"
                 >
                     <ChatBubble className="mr-1.5 w-5 h-5" /> {post.commentsCount || 0} Comments
@@ -210,7 +224,7 @@ const Community: React.FC<ExtendedCommunityProps> = ({
   return (
     <div className="bg-gray-100 dark:bg-gray-900 h-full flex flex-col relative transition-colors duration-200">
       
-      {/* Header Section */}
+      {/* Header */}
       <div className="flex flex-col sm:flex-row justify-between items-center mb-6 px-5 pt-4 flex-shrink-0">
         <div className="mb-3 sm:mb-0 w-full sm:w-auto">
              <h1 className="text-2xl font-bold text-gray-800 dark:text-gray-100">Community Feed</h1>
@@ -233,7 +247,7 @@ const Community: React.FC<ExtendedCommunityProps> = ({
         </div>
       </div>
       
-      {/* Content Area */}
+      {/* List */}
       <div className="flex-grow px-4 overflow-hidden">
         {loading ? (
             <div className="flex justify-center pt-10">
@@ -259,17 +273,15 @@ const Community: React.FC<ExtendedCommunityProps> = ({
                 itemContent={renderPost}
                 restoreStateFrom={savedScrollState}
                 endReached={loadMorePosts} 
-                components={{
-                    Footer: renderFooter
-                }}
+                components={{ Footer: renderFooter }}
                 className="space-y-4 pb-20"
             />
         )}
       </div>
 
-      {/* Floating Action Button */}
+      {/* FAB */}
       <button
-        onClick={() => onOpenModal(ModalType.CREATE_POST)}
+        onClick={handleCreatePost}
         className="fixed bottom-20 right-4 bg-indigo-600 text-white p-4 rounded-full shadow-lg hover:bg-indigo-700 transition-all duration-200 z-30 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-indigo-500 dark:focus:ring-offset-gray-900"
       >
         <Plus className="w-6 h-6" />
