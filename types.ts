@@ -193,6 +193,7 @@ export interface ChatMessage {
     text?: string;
     imageUrl?: string;
     timestamp: any;
+    type?: 'text' | 'image';
 }
 
 export interface ChatConversation {
@@ -249,10 +250,12 @@ export interface Post {
   title: string;
   content: string;
   imageUrl?: string; 
+  thumbnailUrl?: string;
   timestamp: any;
   upvotes: number;
   commentsCount: number;
   comments: Comment[];
+  isAnonymous?: boolean;
 }
 
 export interface Comment {

@@ -1,14 +1,14 @@
 import React, { useState, useRef } from 'react';
 import { storage, db } from '../../firebase'; 
-import { ref, uploadString, getDownloadURL } from "firebase/storage";
-import { collection, addDoc, serverTimestamp } from "firebase/firestore";
+import { ref, uploadString, getDownloadURL, UploadMetadata } from "firebase/storage";
+import { collection, doc, setDoc, serverTimestamp } from "firebase/firestore";
 import { CreatePostProps } from '../../types';
 import Photo from '../icons/Photo';
 import XCircle from '../icons/XCircle';
-import { useUser } from '../../contexts/UserContext'; // Integrated Context
+import { useUser } from '../../contexts/UserContext'; 
 
 const CreatePost: React.FC<CreatePostProps> = ({ onSubmit, onClose }) => {
-  const { user, firebaseUser } = useUser(); // Use global user state
+  const { user, firebaseUser } = useUser(); 
   
   const [title, setTitle] = useState('');
   const [content, setContent] = useState('');
@@ -59,22 +59,34 @@ const CreatePost: React.FC<CreatePostProps> = ({ onSubmit, onClose }) => {
     let uploadedImageUrl: string | undefined = undefined;
 
     try {
-      // 1. Image Upload Logic
+      // 1. Generate Post ID first so we can attach it to the image metadata
+      const newPostRef = doc(collection(db, "posts"));
+      const postId = newPostRef.id;
+
+      // 2. Image Upload Logic with Metadata
       if (imageBase64) {
         const imageName = `${Date.now()}_post_image`;
         const imageRef = ref(storage, `post_images/${firebaseUser.uid}/${imageName}`);
-        await uploadString(imageRef, imageBase64, 'data_url');
+        
+        // Attach postId to metadata so the Extension/Cloud Function can link back to Firestore
+        const metadata: UploadMetadata = {
+          customMetadata: {
+            postId: postId
+          }
+        };
+
+        await uploadString(imageRef, imageBase64, 'data_url', metadata);
         uploadedImageUrl = await getDownloadURL(imageRef);
       }
       
-      // 2. Extract College Domain from Context User
       const collegeDomain = user.email ? user.email.split('@')[1].toLowerCase() : 'general';
 
-      // 3. Save to Firestore
-      await addDoc(collection(db, "posts"), {
+      // 3. Save to Firestore using setDoc and the pre-generated ID
+      await setDoc(newPostRef, {
           title: title.trim(),
           content: content.trim(),
           imageUrl: uploadedImageUrl || null,
+          thumbnailUrl: null, // Initialize as null, waiting for Extension to update it
           collegeDomain: collegeDomain,
           authorId: firebaseUser.uid,
           authorName: user.name || "Anonymous Student", 

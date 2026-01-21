@@ -3,8 +3,8 @@ import { useParams } from 'react-router-dom';
 import { ChatMessage } from '../../types';
 import ArrowLeft from '../icons/ArrowLeft';
 import { db, storage } from '../../firebase';
-import { collection, addDoc, query, orderBy, onSnapshot, serverTimestamp, updateDoc, doc, getDoc } from 'firebase/firestore'; 
-import { ref, uploadString, getDownloadURL } from 'firebase/storage';
+import { collection, addDoc, query, orderBy, onSnapshot, serverTimestamp, updateDoc, doc, getDoc, setDoc } from 'firebase/firestore'; 
+import { ref, uploadString, UploadMetadata } from 'firebase/storage';
 import Image from '../icons/Image';
 import Send from '../icons/Send';
 import { useUser } from '../../contexts/UserContext'; 
@@ -14,7 +14,6 @@ interface RouteChatDetailProps {
 }
 
 const ChatDetail: React.FC<RouteChatDetailProps> = ({ onBack }) => {
-  // 2. Get conversationId from URL
   const { conversationId } = useParams<{ conversationId: string }>();
   const { firebaseUser } = useUser(); 
   const currentUserId = firebaseUser?.uid;
@@ -22,14 +21,13 @@ const ChatDetail: React.FC<RouteChatDetailProps> = ({ onBack }) => {
   const [messages, setMessages] = useState<ChatMessage[]>([]);
   const [inputText, setInputText] = useState('');
   
-  // 3. Local state for header info since we don't have initialConversation prop
   const [conversationName, setConversationName] = useState("Chat");
   const [conversationAvatar, setConversationAvatar] = useState<string | undefined>(undefined);
 
   const messagesEndRef = useRef<HTMLDivElement>(null);
   const fileInputRef = useRef<HTMLInputElement>(null);
 
-  // 4. Fetch Chat Metadata (Participants)
+  // Fetch Chat Metadata (Participants)
   useEffect(() => {
     if (!conversationId || !currentUserId) return;
 
@@ -40,7 +38,6 @@ const ChatDetail: React.FC<RouteChatDetailProps> = ({ onBack }) => {
 
         if (chatSnap.exists()) {
           const chatData = chatSnap.data();
-          // Find the participant that is NOT the current user
           const otherParticipant = chatData.participants?.find((p: any) => p.id !== currentUserId);
           
           if (otherParticipant) {
@@ -56,7 +53,7 @@ const ChatDetail: React.FC<RouteChatDetailProps> = ({ onBack }) => {
     fetchChatMetadata();
   }, [conversationId, currentUserId]);
 
-  // 5. Listen for Messages
+  // Listen for Messages
   useEffect(() => {
     if (!conversationId) return;
     const q = query(
@@ -68,7 +65,6 @@ const ChatDetail: React.FC<RouteChatDetailProps> = ({ onBack }) => {
         const fetchedMessages = snapshot.docs.map(doc => ({
             id: doc.id,
             ...doc.data(),
-            // Handle Firestore Timestamps safely
             timestamp: doc.data().timestamp?.toDate().toISOString() || new Date().toISOString()
         })) as ChatMessage[];
         
@@ -85,13 +81,12 @@ const ChatDetail: React.FC<RouteChatDetailProps> = ({ onBack }) => {
 
   // Send Message Handler
   const handleSend = async () => {
-    if (!inputText.trim() || !currentUserId || !conversationId) return; // Ensure conversationId exists
+    if (!inputText.trim() || !currentUserId || !conversationId) return;
 
     const textToSend = inputText.trim();
     setInputText(''); 
 
     try {
-        // Add message to subcollection
         await addDoc(collection(db, "chats", conversationId, "messages"), {
             text: textToSend,
             senderId: currentUserId,
@@ -99,7 +94,6 @@ const ChatDetail: React.FC<RouteChatDetailProps> = ({ onBack }) => {
             type: 'text'
         });
 
-        // Update parent chat document
         const chatRef = doc(db, "chats", conversationId);
         await updateDoc(chatRef, {
             lastMessage: textToSend,
@@ -112,14 +106,13 @@ const ChatDetail: React.FC<RouteChatDetailProps> = ({ onBack }) => {
     }
   };
 
-  // Mark as Read Logic (Corrected)
+  // Mark as Read Logic
   useEffect(() => {
     if (!conversationId || !currentUserId) return;
 
     const markAsRead = async () => {
       try {
         const chatRef = doc(db, "chats", conversationId);
-        // Use dot notation to update only this user's timestamp in the map
         await updateDoc(chatRef, {
             [`lastReadTimestamps.${currentUserId}`]: serverTimestamp()
         });
@@ -128,11 +121,8 @@ const ChatDetail: React.FC<RouteChatDetailProps> = ({ onBack }) => {
       }
     };
 
-    // Mark as read immediately on mount or dependencies change
     markAsRead();
 
-    // Check if the latest message is NOT from me, then mark as read again
-    // This ensures if I'm staring at the screen and they reply, it counts as read.
     if (messages.length > 0) {
         const lastMessage = messages[messages.length - 1];
         if (lastMessage.senderId !== currentUserId) {
@@ -140,32 +130,53 @@ const ChatDetail: React.FC<RouteChatDetailProps> = ({ onBack }) => {
         }
     }
     
-  }, [conversationId, currentUserId, messages.length]); // Added messages.length dependency
+  }, [conversationId, currentUserId, messages.length]);
 
   // Image Upload Handler
   const handleImageUpload = async (event: React.ChangeEvent<HTMLInputElement>) => {
     const file = event.target.files?.[0];
     if (file && currentUserId && conversationId) {
+      if (file.size > 2 * 1024 * 1024) { 
+        alert("Image size should not exceed 2MB.");
+        return;
+      }
+
       const reader = new FileReader();
       reader.onloadend = async () => {
         const base64String = reader.result as string;
         
         try {
+            // 1. Generate Message ID first
+            const messagesRef = collection(db, "chats", conversationId, "messages");
+            const newMessageRef = doc(messagesRef);
+            const messageId = newMessageRef.id;
+
+            // 2. Prepare Metadata for Cloud Function
             const imageName = `${Date.now()}_chat_image`;
             const imageRef = ref(storage, `chat_images/${conversationId}/${imageName}`);
-            await uploadString(imageRef, base64String, 'data_url');
-            const downloadUrl = await getDownloadURL(imageRef);
+            
+            const metadata: UploadMetadata = {
+                customMetadata: {
+                    chatId: conversationId,
+                    messageId: messageId
+                }
+            };
 
-            await addDoc(collection(db, "chats", conversationId, "messages"), {
-                imageUrl: downloadUrl,
+            // 3. Upload Image
+            await uploadString(imageRef, base64String, 'data_url', metadata);
+            
+            // 4. Create Message Doc (Cloud Function will update 'imageUrl' later)
+            await setDoc(newMessageRef, {
+                imageUrl: null, // Placeholder until resized
                 senderId: currentUserId,
                 timestamp: serverTimestamp(),
                 type: 'image'
             });
 
+            // 5. Update Chat Conversation Preview
             const chatRef = doc(db, "chats", conversationId);
             await updateDoc(chatRef, {
-                lastMessage: "📷 Image",
+                lastMessage: "📷 Photo",
                 lastMessageTimestamp: serverTimestamp(),
                 lastSenderId: currentUserId
             });
@@ -210,7 +221,6 @@ const ChatDetail: React.FC<RouteChatDetailProps> = ({ onBack }) => {
             const isMe = msg.senderId === currentUserId;
             return (
                 <div key={msg.id} className={`flex ${isMe ? 'justify-end' : 'justify-start'}`}>
-                    {/* Message Bubble */}
                     <div className={`max-w-[75%] lg:max-w-[60%] flex flex-col ${isMe ? 'items-end' : 'items-start'}`}>
                         <div className={`px-4 py-2 rounded-2xl shadow-sm break-words
                             ${isMe 
@@ -218,12 +228,18 @@ const ChatDetail: React.FC<RouteChatDetailProps> = ({ onBack }) => {
                             : 'bg-white dark:bg-gray-800 text-gray-800 dark:text-gray-100 rounded-tl-none border border-gray-100 dark:border-gray-700'
                         }`}>
                             {msg.text && <p className="text-sm md:text-base leading-relaxed whitespace-pre-wrap">{msg.text}</p>}
-                            {msg.imageUrl && (
+                            
+                            {/* [!code ++] Updated Image Rendering Logic */}
+                            {msg.imageUrl ? (
                                 <img src={msg.imageUrl} alt="Attachment" className="rounded-lg mt-1 max-h-60 w-full object-cover" />
+                            ) : (msg.type === 'image' && !msg.imageUrl) && (
+                                <div className="flex items-center space-x-2 text-sm italic opacity-70 py-2">
+                                   <div className="animate-spin h-4 w-4 border-2 border-current border-t-transparent rounded-full"></div>
+                                   <span>Processing image...</span>
+                                </div>
                             )}
                         </div>
                         
-                        {/* Timestamp */}
                         <span className={`text-[10px] mt-1 px-1 ${
                             isMe ? 'text-gray-400 dark:text-gray-500' : 'text-gray-400 dark:text-gray-500'
                         }`}>
