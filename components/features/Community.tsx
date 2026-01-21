@@ -1,5 +1,5 @@
-import React, { useState, useMemo, useEffect } from 'react';
-import { CommunityProps, Post, ModalType } from '../../types';
+import React, { useState, useMemo, useEffect, useRef } from 'react';
+import { Post, ModalType } from '../../types';
 import UserCircle from '../icons/UserCircle';
 import Search from '../icons/Search';
 import Plus from '../icons/Plus';
@@ -8,9 +8,10 @@ import { collection, query, where, orderBy, onSnapshot } from 'firebase/firestor
 import ThumbsUp from '../icons/ThumbsUp';
 import ChatBubble from '../icons/ChatBubble';
 import { useUser } from '../../contexts/UserContext';
-import { Virtuoso } from 'react-virtuoso';
+import { Virtuoso, VirtuosoHandle, StateSnapshot } from 'react-virtuoso';
 
 
+let savedScrollState: StateSnapshot | undefined;
 interface ExtendedCommunityProps {
   onNavigateToPostDetail: (post: Post) => void; 
   onToggleLike: (postId: string) => void;
@@ -28,6 +29,9 @@ const Community: React.FC<ExtendedCommunityProps> = ({
   const [posts, setPosts] = useState<Post[]>([]);
   const [loading, setLoading] = useState(true);
   
+  // 2. Ref to control Virtuoso and get its state
+  const virtuosoRef = useRef<VirtuosoHandle>(null);
+
   const userDomain = useMemo(() => {
     return user?.email ? user.email.split('@')[1].toLowerCase() : null;
   }, [user]);
@@ -63,6 +67,17 @@ const Community: React.FC<ExtendedCommunityProps> = ({
         setLoading(false);
     }
   }, [userDomain]);
+
+  // 3. Save scroll state when component unmounts
+  useEffect(() => {
+    return () => {
+      if (virtuosoRef.current) {
+        virtuosoRef.current.getState((state) => {
+          savedScrollState = state;
+        });
+      }
+    };
+  }, []);
 
   const filteredPosts = useMemo(() => {
     if (!searchTerm.trim()) {
@@ -123,10 +138,11 @@ const Community: React.FC<ExtendedCommunityProps> = ({
   };
 
   return (
-    <div className="p-4 bg-gray-100 dark:bg-gray-900 min-h-full pb-20 relative transition-colors duration-200 flex flex-col">
+    // 4. Changed container to h-full flex flex-col to manage internal scrolling
+    <div className="bg-gray-100 dark:bg-gray-900 h-full flex flex-col relative transition-colors duration-200">
       
-      {/* Header Section */}
-      <div className="flex flex-col sm:flex-row justify-between items-center mb-6 px-1 flex-shrink-0">
+      {/* Header Section - Now Fixed at Top with padding */}
+      <div className="flex flex-col sm:flex-row justify-between items-center mb-6 px-5 pt-4 flex-shrink-0">
         <div className="mb-3 sm:mb-0 w-full sm:w-auto">
              <h1 className="text-2xl font-bold text-gray-800 dark:text-gray-100">Community Feed</h1>
              <p className="text-xs text-indigo-600 dark:text-indigo-400 font-medium">
@@ -148,28 +164,36 @@ const Community: React.FC<ExtendedCommunityProps> = ({
         </div>
       </div>
       
-      {/* Content Area - Virtualized */}
-      {loading ? (
-        <div className="flex justify-center pt-10">
-            <svg className="animate-spin h-8 w-8 text-indigo-600" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24"><circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4"></circle><path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"></path></svg>
-        </div>
-      ) : filteredPosts.length === 0 ? (
-         <div className="text-center text-gray-500 dark:text-gray-400 mt-10 p-6 bg-white dark:bg-gray-800 rounded-lg shadow border border-gray-100 dark:border-gray-700">
-            <h3 className="text-sm font-medium text-gray-900 dark:text-gray-100">
-              {searchTerm ? "No posts match your search." : "No posts yet."}
-            </h3>
-            <p className="mt-1 text-sm text-gray-500 dark:text-gray-400">
-              {searchTerm ? "Try a different search term." : "Be the first to share something with your college!"}
-            </p>
-        </div>
-      ) : (
-        <Virtuoso
-          useWindowScroll
-          data={filteredPosts}
-          itemContent={renderPost}
-          className="space-y-4"
-        />
-      )}
+      {/* Content Area - Virtualized List takes remaining space */}
+      <div className="flex-grow px-4 overflow-hidden">
+        {loading ? (
+            <div className="flex justify-center pt-10">
+                <svg className="animate-spin h-8 w-8 text-indigo-600" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24"><circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4"></circle><path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"></path></svg>
+            </div>
+        ) : filteredPosts.length === 0 ? (
+            <div className="text-center text-gray-500 dark:text-gray-400 mt-10 p-6 bg-white dark:bg-gray-800 rounded-lg shadow border border-gray-100 dark:border-gray-700">
+                <svg className="mx-auto h-12 w-12 text-gray-400 dark:text-gray-500 mb-3" fill="none" viewBox="0 0 24 24" stroke="currentColor" aria-hidden="true">
+                <path vectorEffect="non-scaling-stroke" strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M8 10h.01M12 10h.01M16 10h.01M9 16H5a2 2 0 01-2-2V6a2 2 0 012-2h14a2 2 0 012 2v8a2 2 0 01-2 2h-5l-5 5v-5z" />
+                </svg>
+                <h3 className="text-sm font-medium text-gray-900 dark:text-gray-100">
+                {searchTerm ? "No posts match your search." : "No posts yet."}
+                </h3>
+                <p className="mt-1 text-sm text-gray-500 dark:text-gray-400">
+                {searchTerm ? "Try a different search term." : "Be the first to share something with your college!"}
+                </p>
+            </div>
+        ) : (
+            // 5. Virtuoso Configuration for Scroll Restoration
+            <Virtuoso
+                ref={virtuosoRef}
+                style={{ height: '100%' }} // Takes up the space of the flex container
+                data={filteredPosts}
+                itemContent={renderPost}
+                restoreStateFrom={savedScrollState}
+                className="space-y-4 pb-20"
+            />
+        )}
+      </div>
 
       {/* Floating Action Button */}
       <button
